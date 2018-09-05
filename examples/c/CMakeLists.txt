@@ -197,6 +197,10 @@ add_executable(nonlinear_chain_ocp_nlp_example nonlinear_chain_ocp_nlp.c ${CHAIN
 target_link_libraries(nonlinear_chain_ocp_nlp_example acados)
 add_test(nonlinear_chain_ocp_nlp_example nonlinear_chain_ocp_nlp_example)
 
+# -------------------- nmpc_chain_mass
+add_executable(nmpc_chain_mass nmpc_chain_mass.c ${CHAIN_MODEL_SRC})
+target_link_libraries(nmpc_chain_mass acados)
+
 # -------------------- wind turbine nmpc
 add_executable(wind_turbine_nmpc_example wind_turbine_nmpc.c ${WT_MODEL_NX6P2_SRC})
 target_link_libraries(wind_turbine_nmpc_example acados)
