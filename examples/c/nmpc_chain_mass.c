@@ -16,7 +16,6 @@
  *    Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  *
  */
-#define ACADOS_WITH_QPOASES
 #include <assert.h>
 #include <math.h>
 #include <stdio.h>
@@ -52,36 +51,24 @@
 #include "acados/ocp_nlp/ocp_nlp_dynamics_disc.h"
 #include "acados/ocp_nlp/ocp_nlp_constraints_bgh.h"
 
-#include "chain_model/chain_model.h"
-#include "implicit_chain_model/chain_model_impl.h"
+#include "nmpc_chain_mass/chain_model_impl.h"
 
 // xN
-#include "chain_model/xN_nm2.c"
-#include "chain_model/xN_nm3.c"
-#include "chain_model/xN_nm4.c"
-#include "chain_model/xN_nm5.c"
-#include "chain_model/xN_nm6.c"
+#include "nmpc_chain_mass/xN_nm2.c"
+#include "nmpc_chain_mass/xN_nm3.c"
+#include "nmpc_chain_mass/xN_nm4.c"
+#include "nmpc_chain_mass/xN_nm5.c"
+#include "nmpc_chain_mass/xN_nm6.c"
 
 #define MAX_SQP_ITERS 1
 
-#define NMF 5  // number of free masses: actually one more is used: possible values are 1,2,3,4,5
+#define NMF 2  // number of free masses: actually one more is used: possible values are 1,2,3,4,5
 
-#define NX  6*NMF
 #define NU  3
 #define NUM_STEPS   25        /* Number of real-time iterations. */
-#define NRUNS 5				  /* Number of tries for the same problem. */
+#define NRUNS 1				  /* Number of tries for the same problem. */
 
 int NN = 0;
-
-
-// TODO(dimitris): DOES THIS EVEN WORK ATM?
-enum sensitivities_scheme {
-    EXACT_NEWTON,
-    INEXACT_NEWTON,
-    INIS,
-    FROZEN_INEXACT_NEWTON,
-    FROZEN_INIS
-};
 
 
 static void select_dynamics_casadi(int N, int num_free_masses,
@@ -296,7 +283,8 @@ void read_final_state(const int nx, const int num_free_masses, double *xN)
 int main()
 {
 	double solution[10] = {0};
-	for(int horizon = 0; horizon < 10; horizon++) {
+	int NX = (6*NMF) - 3;
+	for(int horizon = 0; horizon < 1; horizon++) {
 		// NN is the horizon in 10 steps.
 		NN = 10*(horizon + 1);
 		/************************************************
@@ -652,6 +640,7 @@ int main()
 
 				// call nlp solver
 				status = ocp_nlp_solve(solver, nlp_in, nlp_out);
+				printf("%d \n", status);
 
 				double time = acados_toc(&timer) * 1000;
 				if (iter > 4) {
@@ -665,11 +654,21 @@ int main()
 
 				int sqp_iter = solver_mem->sqp_iter;
 
+			    for (int k =0; k < 3; k++) {
+			        printf("x[%d] = \n", k);
+					blasfeo_print_tran_dvec(nx[k], nlp_out->ux+k, nu[k]);
+			    	printf("u[%d] = \n", k);
+					blasfeo_print_tran_dvec(nu[k], nlp_out->ux+k, 0);
+			    }
+			    printf("u[N-1] = \n");
+				blasfeo_print_tran_dvec(nu[NN-1], nlp_out->ux+NN-1, 0);
+			    printf("x[N] = \n");
+				blasfeo_print_tran_dvec(nx[NN], nlp_out->ux+NN, nu[NN]);
+
 				/* Apply the new control to the system, first NU components. */
 
 				double controls[3];
 				blasfeo_unpack_dvec(3, nlp_out->ux, 0, controls);
-
 
 				// x
 				for (int ii = 0; ii < NX; ii++)
@@ -688,6 +687,12 @@ int main()
 
 				sim_solve(sim_solver, in, out);
 
+				for (int ii = 0; ii < NX; ii++)
+					printf("%f ", x_current[ii]);
+				printf("\n");
+				for (int ii = 0; ii < NU; ii++)
+					printf("%f ", controls[ii]);
+				printf("\n");
 
 				for (int ii = 0; ii < NX; ii++)
 					x_current[ii] = out->xn[ii];
