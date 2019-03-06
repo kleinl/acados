@@ -61,41 +61,57 @@ void *sim_irk_dims_assign(void *config_, void *raw_memory)
     return dims;
 }
 
-void sim_irk_set_nx(void *dims_, int nx)
+
+
+void sim_irk_dims_set(void *config_, void *dims_, const char *field, const int *value)
 {
-    sim_irk_dims *dims = (sim_irk_dims *) dims_;
-    dims->nx = nx;
+    sim_irk_dims *dims = dims_;
+
+    if (!strcmp(field, "nx"))
+    {
+        dims->nx = *value;
+    }
+    else if (!strcmp(field, "nu"))
+    {
+        dims->nu = *value;
+    }
+    else if (!strcmp(field, "nz"))
+    {
+        dims->nz = *value;
+    }
+    else
+    {
+        printf("\nerror: sim_irk_dims_set: field not available: %s\n", field);
+        exit(1);
+    }
 }
 
-void sim_irk_set_nu(void *dims_, int nu)
+
+
+void sim_irk_dims_get(void *config_, void *dims_, const char *field, int *value)
 {
-    sim_irk_dims *dims = (sim_irk_dims *) dims_;
-    dims->nu = nu;
+    sim_irk_dims *dims = dims_;
+
+    if (!strcmp(field, "nx"))
+    {
+        *value = dims->nx;
+    }
+    else if (!strcmp(field, "nu"))
+    {
+        *value = dims->nu;
+    }
+    else if (!strcmp(field, "nz"))
+    {
+        *value = dims->nz;
+    }
+    else
+    {
+        printf("\nerror: sim_irk_dims_get: field not available: %s\n", field);
+        exit(1);
+    }
 }
 
-void sim_irk_set_nz(void *dims_, int nz)
-{
-    sim_irk_dims *dims = (sim_irk_dims *) dims_;
-    dims->nz = nz;
-}
 
-void sim_irk_get_nx(void *dims_, int *nx)
-{
-    sim_irk_dims *dims = (sim_irk_dims *) dims_;
-    *nx = dims->nx;
-}
-
-void sim_irk_get_nu(void *dims_, int *nu)
-{
-    sim_irk_dims *dims = (sim_irk_dims *) dims_;
-    *nu = dims->nu;
-}
-
-void sim_irk_get_nz(void *dims_, int *nz)
-{
-    sim_irk_dims *dims = (sim_irk_dims *) dims_;
-    *nz = dims->nz;
-}
 
 /************************************************
  * model
@@ -110,6 +126,8 @@ int sim_irk_model_calculate_size(void *config, void *dims)
     return size;
 }
 
+
+
 void *sim_irk_model_assign(void *config, void *dims, void *raw_memory)
 {
     char *c_ptr = (char *) raw_memory;
@@ -122,28 +140,49 @@ void *sim_irk_model_assign(void *config, void *dims, void *raw_memory)
     return data;
 }
 
-int sim_irk_model_set_function(void *model_, sim_function_t fun_type, void *fun)
+
+
+int sim_irk_model_set(void *model_, const char *field, void *value)
 {
     irk_model *model = model_;
 
-    switch (fun_type)
+    if (!strcmp(field, "impl_ode_fun"))
     {
-        case IMPL_ODE_FUN:
-            model->impl_ode_fun = (external_function_generic *) fun;
-            break;
-        case IMPL_ODE_FUN_JAC_X_XDOT:
-            model->impl_ode_fun_jac_x_xdot_z = (external_function_generic *) fun;
-            break;
-        case IMPL_ODE_JAC_X_XDOT_U:
-            model->impl_ode_jac_x_xdot_u_z = (external_function_generic *) fun;
-            break;
-        case IMPL_ODE_HESS:
-            model->impl_ode_hess = (external_function_generic *) fun;
-        default:
-            return ACADOS_FAILURE;
+        model->impl_ode_fun = value;
     }
+    else if (!strcmp(field, "impl_ode_fun_jac_x_xdot"))
+    {
+        // TODO(oj): remove this case and fix dependencies
+        model->impl_ode_fun_jac_x_xdot_z = value;
+    }
+    else if (!strcmp(field, "impl_ode_fun_jac_x_xdot_z"))
+    {
+        model->impl_ode_fun_jac_x_xdot_z = value;
+    }
+    else if (!strcmp(field, "impl_ode_jac_x_xdot_u"))
+    {
+        // TODO(oj): remove this and update with z everywhere
+        model->impl_ode_jac_x_xdot_u_z = value;
+    }
+    else if (!strcmp(field, "impl_ode_jac_x_xdot_u_z"))
+    {
+        model->impl_ode_jac_x_xdot_u_z = value;
+    }
+    else if (!strcmp(field, "impl_ode_hes") | !strcmp(field, "impl_ode_hess"))
+    {
+        model->impl_ode_hess = value;
+    }
+    else
+    {
+        printf("\nerror: sim_irk_model_set: wrong field: %s\n", field);
+		exit(1);
+//        return ACADOS_FAILURE;
+    }
+
     return ACADOS_SUCCESS;
 }
+
+
 
 /************************************************
  * opts
@@ -155,7 +194,7 @@ int sim_irk_opts_calculate_size(void *config_, void *dims)
 
     int size = 0;
 
-    size += sizeof(sim_rk_opts);
+    size += sizeof(sim_opts);
 
     size += ns_max * ns_max * sizeof(double);  // A_mat
     size += ns_max * sizeof(double);           // b_vec
@@ -178,8 +217,8 @@ void *sim_irk_opts_assign(void *config_, void *dims, void *raw_memory)
 
     char *c_ptr = (char *) raw_memory;
 
-    sim_rk_opts *opts = (sim_rk_opts *) c_ptr;
-    c_ptr += sizeof(sim_rk_opts);
+    sim_opts *opts = (sim_opts *) c_ptr;
+    c_ptr += sizeof(sim_opts);
 
     align_char_to(8, &c_ptr);
 
@@ -202,7 +241,7 @@ void *sim_irk_opts_assign(void *config_, void *dims, void *raw_memory)
 void sim_irk_opts_initialize_default(void *config_, void *dims_, void *opts_)
 {
     sim_irk_dims *dims = (sim_irk_dims *) dims_;
-    sim_rk_opts *opts = opts_;
+    sim_opts *opts = opts_;
 
     opts->ns = 3;  // GL 3
     int ns = opts->ns;
@@ -236,7 +275,7 @@ void sim_irk_opts_initialize_default(void *config_, void *dims_, void *opts_)
 
 void sim_irk_opts_update(void *config_, void *dims, void *opts_)
 {
-    sim_rk_opts *opts = opts_;
+    sim_opts *opts = opts_;
 
     int ns = opts->ns;
 
@@ -252,6 +291,13 @@ void sim_irk_opts_update(void *config_, void *dims, void *opts_)
     butcher_table(ns, opts->c_vec, opts->b_vec, opts->A_mat, opts->work);
 
     return;
+}
+
+
+int sim_irk_opts_set(void *config_, void *opts_, const char *field, void *value)
+{
+    sim_opts *opts = (sim_opts *) opts_;
+    return sim_opts_set_(opts, field, value);
 }
 
 /************************************************
@@ -271,7 +317,7 @@ void *sim_irk_memory_assign(void *config, void *dims, void *opts_, void *raw_mem
 int sim_irk_workspace_calculate_size(void *config_, void *dims_, void *opts_)
 {
     sim_irk_dims *dims = (sim_irk_dims *) dims_;
-    sim_rk_opts *opts = opts_;
+    sim_opts *opts = opts_;
 
     int ns = opts->ns;
 
@@ -352,7 +398,7 @@ int sim_irk_workspace_calculate_size(void *config_, void *dims_, void *opts_)
 
 static void *sim_irk_workspace_cast(void *config_, void *dims_, void *opts_, void *raw_memory)
 {
-    sim_rk_opts *opts = opts_;
+    sim_opts *opts = opts_;
     sim_irk_dims *dims = (sim_irk_dims *) dims_;
 
     int ns = opts->ns;
@@ -463,6 +509,12 @@ static void *sim_irk_workspace_cast(void *config_, void *dims_, void *opts_, voi
     return (void *) workspace;
 }
 
+int sim_irk_precompute(void *config_, sim_in *in, sim_out *out, void *opts_, void *mem_,
+                       void *work_)
+{
+    return ACADOS_SUCCESS;
+}
+
 /************************************************
  * integrator
  ************************************************/
@@ -471,11 +523,14 @@ int sim_irk(void *config_, sim_in *in, sim_out *out, void *opts_, void *mem_, vo
 {
 /* Get variables from workspace, etc; -- 
     cast pointers */
-    sim_solver_config *config = config_;
-    sim_rk_opts *opts = opts_;
+    sim_config *config = config_;
+    sim_opts *opts = opts_;
 
-    assert(opts->ns == opts->tableau_size && "the Butcher tableau size does not match ns");
-
+    if ( opts->ns != opts->tableau_size )
+    {
+        printf("Error in sim_irk: the Butcher tableau size does not match ns");
+        return ACADOS_FAILURE;
+    }
     int ns = opts->ns;
 
     void *dims_ = in->dims;
@@ -645,15 +700,23 @@ int sim_irk(void *config_, sim_in *in, sim_out *out, void *opts_, void *mem_, vo
     blasfeo_pack_dmat(nx, nx + nu, in->S_forw, nx, S_forw, 0, 0);
     blasfeo_pack_dvec(nx + nu, in->S_adj, lambda, 0);
 
+    // initialize integration variables
+    for (int i = 0; i < ns; ++i){
+        //  state derivatives
+        blasfeo_pack_dvec(nx, in->xdot, K, nx*i);
+        //  algebraic variables
+        blasfeo_pack_dvec(nz, in->z, K, nx*ns + i*nz);
+    }
+
     // TODO(dimitris, FreyJo): implement NF (number of forward sensis) properly, instead of nx+nu?
 
 /************************************************
 * Forward Sweep 
 *       - (simulation & forward sensitivities)
 ************************************************/
-    // initialize algebraic variables
-    for (int i = 0; i < ns; ++i)
-        blasfeo_pack_dvec(nz, in->z, K, nx*ns + i*nz);
+    // set input for forward sweep
+    impl_ode_xdot_in.x = K;
+    impl_ode_z_in.x = K;
 
     // start the loop
     acados_tic(&timer);
@@ -669,6 +732,14 @@ int sim_irk(void *config_, sim_in *in, sim_out *out, void *opts_, void *mem_, vo
             S_forw_ss = &S_forw[ss+1];
             // copy current S_forw into S_forw_ss
             blasfeo_dgecp(nx, nx + nu, &S_forw[ss], 0, 0, S_forw_ss, 0, 0);
+
+            // copy last jacobian factorization into dG_dK_ss
+            if (ss > 0 && opts->jac_reuse) {
+                blasfeo_dgecp(nK, nK, &dG_dK[ss-1], 0, 0, dG_dK_ss, 0, 0);
+                for (int ii = 0; ii < nK; ii++) {
+                    ipiv_ss[ii] = ipiv[nK*(ss-1) + ii];
+                }
+            }
         }
         else
         {
@@ -678,20 +749,16 @@ int sim_irk(void *config_, sim_in *in, sim_out *out, void *opts_, void *mem_, vo
             ipiv_ss = ipiv;
             S_forw_ss = S_forw;
         }
-        // obtain Kn
-        impl_ode_xdot_in.x = K;
-        impl_ode_z_in.x = K;
+
+        if ( opts->sens_adj || opts->sens_hess )  // store current xn
+            blasfeo_dveccp(nx, xn, 0, &xn_traj[ss], 0);
+
         for (int iter = 0; iter < newton_iter; iter++)
         {
             if ((opts->jac_reuse && (ss == 0) && (iter == 0)) || (!opts->jac_reuse))
             {
                 // if new jacobian gets computed, initialize dG_dK_ss with zeros
                 blasfeo_dgese(nK, nK, 0.0, dG_dK_ss, 0, 0);
-            }
-
-            if ( opts->sens_adj || opts->sens_hess )
-            {
-                blasfeo_dveccp(nx, xn, 0, &xn_traj[ss], 0);
             }
 
             for (int ii = 0; ii < ns; ii++)
@@ -759,7 +826,7 @@ int sim_irk(void *config_, sim_in *in, sim_out *out, void *opts_, void *mem_, vo
             // blasfeo_print_exp_dmat((nz+nx) *ns, (nz+nx) *ns, dG_dK_ss, 0, 0);
             if ((opts->jac_reuse && (ss == 0) && (iter == 0)) || (!opts->jac_reuse))
             {
-                blasfeo_dgetrf_rowpivot(nK, nK, dG_dK_ss, 0, 0, dG_dK_ss, 0, 0, ipiv_ss);
+                blasfeo_dgetrf_rp(nK, nK, dG_dK_ss, 0, 0, dG_dK_ss, 0, 0, ipiv_ss);
             }
 
             // permute also the r.h.s
@@ -839,7 +906,7 @@ int sim_irk(void *config_, sim_in *in, sim_out *out, void *opts_, void *mem_, vo
 
             // factorize dG_dK_ss
             acados_tic(&timer_la);
-            blasfeo_dgetrf_rowpivot(nK, nK, dG_dK_ss, 0, 0, dG_dK_ss, 0, 0, ipiv_ss);
+            blasfeo_dgetrf_rp(nK, nK, dG_dK_ss, 0, 0, dG_dK_ss, 0, 0, ipiv_ss);
             timing_la += acados_toc(&timer_la);
             /* obtain dK_dxu */
             // set up right hand side
@@ -930,7 +997,7 @@ int sim_irk(void *config_, sim_in *in, sim_out *out, void *opts_, void *mem_, vo
 
                 // solve linear system
                 acados_tic(&timer_la);
-                blasfeo_dgetrf_rowpivot(nx + nz, nx + nz, &df_dxdotz, 0, 0, &df_dxdotz, 0, 0,
+                blasfeo_dgetrf_rp(nx + nz, nx + nz, &df_dxdotz, 0, 0, &df_dxdotz, 0, 0,
                                                                             ipiv_one_stage);
                 blasfeo_drowpe(nx + nz, ipiv_one_stage, &dk0_dxu);
                 blasfeo_dtrsm_llnu(nx + nz, nx + nu, 1.0, &df_dxdotz, 0, 0,
@@ -1049,7 +1116,7 @@ int sim_irk(void *config_, sim_in *in, sim_out *out, void *opts_, void *mem_, vo
 
                 // factorize dG_dK_ss - already done in forw if hessian is active
                 acados_tic(&timer_la);
-                blasfeo_dgetrf_rowpivot(nK, nK, dG_dK_ss, 0, 0, dG_dK_ss, 0, 0, ipiv_ss);
+                blasfeo_dgetrf_rp(nK, nK, dG_dK_ss, 0, 0, dG_dK_ss, 0, 0, ipiv_ss);
                 timing_la += acados_toc(&timer_la);
 
             }  // end if( !opts->sens_hess )
@@ -1157,31 +1224,29 @@ int sim_irk(void *config_, sim_in *in, sim_out *out, void *opts_, void *mem_, vo
         timing_la;  // note: this is the time for factorization and solving the linear systems
     out->info->ADtime = timing_ad;
 
-    return 0;
+    return ACADOS_SUCCESS;
 }
 
 void sim_irk_config_initialize_default(void *config_)
 {
-    sim_solver_config *config = config_;
+    sim_config *config = config_;
 
     config->evaluate = &sim_irk;
+    config->precompute = &sim_irk_precompute;
     config->opts_calculate_size = &sim_irk_opts_calculate_size;
     config->opts_assign = &sim_irk_opts_assign;
     config->opts_initialize_default = &sim_irk_opts_initialize_default;
     config->opts_update = &sim_irk_opts_update;
+    config->opts_set = &sim_irk_opts_set;
     config->memory_calculate_size = &sim_irk_memory_calculate_size;
     config->memory_assign = &sim_irk_memory_assign;
     config->workspace_calculate_size = &sim_irk_workspace_calculate_size;
     config->model_calculate_size = &sim_irk_model_calculate_size;
     config->model_assign = &sim_irk_model_assign;
-    config->model_set_function = &sim_irk_model_set_function;
+    config->model_set = &sim_irk_model_set;
     config->dims_calculate_size = &sim_irk_dims_calculate_size;
     config->dims_assign = &sim_irk_dims_assign;
-    config->set_nx = &sim_irk_set_nx;
-    config->set_nu = &sim_irk_set_nu;
-    config->set_nz = &sim_irk_set_nz;
-    config->get_nx = &sim_irk_get_nx;
-    config->get_nu = &sim_irk_get_nu;
-    config->get_nz = &sim_irk_get_nz;
+    config->dims_set = &sim_irk_dims_set;
+    config->dims_get = &sim_irk_dims_get;
     return;
 }

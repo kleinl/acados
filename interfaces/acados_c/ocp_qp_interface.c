@@ -33,7 +33,9 @@
 #ifdef ACADOS_WITH_QORE
 #include "acados/dense_qp/dense_qp_qore.h"
 #endif
+#ifdef ACADOS_WITH_QPOASES
 #include "acados/dense_qp/dense_qp_qpoases.h"
+#endif
 #include "acados/ocp_qp/ocp_qp_hpipm.h"
 #ifdef ACADOS_WITH_HPMPC
 #include "acados/ocp_qp/ocp_qp_hpmpc.h"
@@ -45,10 +47,14 @@
 #include "acados/dense_qp/dense_qp_ooqp.h"
 #include "acados/ocp_qp/ocp_qp_ooqp.h"
 #endif
+#ifdef ACADOS_WITH_OSQP
+#include "acados/ocp_qp/ocp_qp_osqp.h"
+#endif
 
 void ocp_qp_xcond_solver_config_initialize_default(ocp_qp_solver_t solver_name,
                                                    ocp_qp_xcond_solver_config *solver_config)
 {
+// NOTE: this only works if solvers are ordered in the enum !!!!!!!!!!!!!!!!
 if (solver_name < FULL_CONDENSING_HPIPM)
     {
         ocp_qp_partial_condensing_solver_config_initialize_default(solver_config);
@@ -66,38 +72,48 @@ if (solver_name < FULL_CONDENSING_HPIPM)
 #ifdef ACADOS_WITH_HPMPC
         case PARTIAL_CONDENSING_HPMPC:
             ocp_qp_hpmpc_config_initialize_default(solver_config->qp_solver);
-#endif
             break;
+#endif
 #ifdef ACADOS_WITH_OOQP
         case PARTIAL_CONDENSING_OOQP:
             ocp_qp_ooqp_config_initialize_default(solver_config->qp_solver);
             break;
 #endif
+#ifdef ACADOS_WITH_OSQP
+        case PARTIAL_CONDENSING_OSQP:
+            ocp_qp_osqp_config_initialize_default(solver_config->qp_solver);
+            break;
+#endif
 #ifdef ACADOS_WITH_QPDUNES
         case PARTIAL_CONDENSING_QPDUNES:
             ocp_qp_qpdunes_config_initialize_default(solver_config->qp_solver);
-#endif
             break;
+#endif
         case FULL_CONDENSING_HPIPM:
             dense_qp_hpipm_config_initialize_default(solver_config->qp_solver);
             break;
 #ifdef ACADOS_WITH_QPOASES
         case FULL_CONDENSING_QPOASES:
             dense_qp_qpoases_config_initialize_default(solver_config->qp_solver);
-#endif
             break;
+#endif
 #ifdef ACADOS_WITH_QORE
         case FULL_CONDENSING_QORE:
             dense_qp_qore_config_initialize_default(solver_config->qp_solver);
-#endif
             break;
+#endif
 #ifdef ACADOS_WITH_OOQP
         case FULL_CONDENSING_OOQP:
             dense_qp_ooqp_config_initialize_default(solver_config->qp_solver);
+            break;
 #endif
+        default:
+            printf("\nerror: ocp_qp_config_create: unsupported plan->qp_solver\n");
+            exit(1);
             break;
     }
 }
+
 
 ocp_qp_xcond_solver_config *ocp_qp_config_create(ocp_qp_solver_plan plan)
 {
@@ -109,6 +125,13 @@ ocp_qp_xcond_solver_config *ocp_qp_config_create(ocp_qp_solver_plan plan)
 
     return solver_config;
 }
+
+
+void ocp_qp_config_free(void *config)
+{
+    free(config);
+}
+
 
 ocp_qp_dims *ocp_qp_dims_create(int N)
 {
@@ -122,6 +145,13 @@ ocp_qp_dims *ocp_qp_dims_create(int N)
     return dims;
 }
 
+void ocp_qp_dims_free(void *dims_)
+{
+    free(dims_);
+}
+
+
+/* in */
 ocp_qp_in *ocp_qp_in_create(ocp_qp_xcond_solver_config *config, ocp_qp_dims *dims)
 {
     int bytes = ocp_qp_in_calculate_size(config, dims);
@@ -133,6 +163,13 @@ ocp_qp_in *ocp_qp_in_create(ocp_qp_xcond_solver_config *config, ocp_qp_dims *dim
     return in;
 }
 
+void ocp_qp_in_free(void *in_)
+{
+    free(in_);
+}
+
+
+/* out */
 ocp_qp_out *ocp_qp_out_create(ocp_qp_xcond_solver_config *config, ocp_qp_dims *dims)
 {
     int bytes = ocp_qp_out_calculate_size(config, dims);
@@ -144,6 +181,13 @@ ocp_qp_out *ocp_qp_out_create(ocp_qp_xcond_solver_config *config, ocp_qp_dims *d
     return out;
 }
 
+
+void ocp_qp_out_free(void *out_)
+{
+    free(out_);
+}
+
+/* opts */
 void *ocp_qp_opts_create(ocp_qp_xcond_solver_config *config, ocp_qp_dims *dims)
 {
     int bytes = config->opts_calculate_size(config, dims);
@@ -156,6 +200,15 @@ void *ocp_qp_opts_create(ocp_qp_xcond_solver_config *config, ocp_qp_dims *dims)
 
     return opts;
 }
+
+
+void ocp_qp_opts_free(void *opts_)
+{
+    free(opts_);
+}
+
+
+/* solver */
 
 int ocp_qp_calculate_size(ocp_qp_xcond_solver_config *config, ocp_qp_dims *dims, void *opts_)
 {

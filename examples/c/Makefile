@@ -33,6 +33,10 @@ ifeq ($(ACADOS_WITH_QORE), 1)
 LIBS += -lqore_dense
 endif
 
+ifeq ($(ACADOS_WITH_OSQP), 1)
+LIBS += -losqp -ldl
+endif
+
 LIBS += -lblasfeo -lm -lblas -llapack
 
 ifeq ($(ACADOS_WITH_OPENMP), 1)
@@ -59,13 +63,15 @@ EXAMPLES += mass_spring_fcond_split
 EXAMPLES += mass_spring_offline_fcond_qpoases_split
 EXAMPLES += nonlinear_chain_ocp_nlp
 # EXAMPLES += sim_crane_no_interface
-EXAMPLES += mass_spring_example_no_interface
-EXAMPLES += nonlinear_chain_ocp_nlp_no_interface
+# EXAMPLES += mass_spring_example_no_interface
+# EXAMPLES += nonlinear_chain_ocp_nlp_no_interface
 EXAMPLES += wind_turbine_nmpc
+#EXAMPLES += engine_example
 
 examples: $(EXAMPLES)
 
 
+# run all
 RUN_EXAMPLES =
 RUN_EXAMPLES += run_dense_qp
 RUN_EXAMPLES += run_pendulum_scqp
@@ -81,9 +87,14 @@ RUN_EXAMPLES += run_mass_spring_fcond_split
 #RUN_EXAMPLES += run_mass_spring_offline_fcond_qpoases_split
 RUN_EXAMPLES += run_nonlinear_chain_ocp_nlp
 # RUN_EXAMPLES += run_sim_crane_no_interface
-RUN_EXAMPLES += run_mass_spring_example_no_interface
-RUN_EXAMPLES += run_nonlinear_chain_ocp_nlp_no_interface
+# RUN_EXAMPLES += run_mass_spring_example_no_interface
+# RUN_EXAMPLES += run_nonlinear_chain_ocp_nlp_no_interface
 RUN_EXAMPLES += run_wind_turbine_nmpc
+#RUN_EXAMPLES += run_engine_example
+
+# overwrite to run just one
+#RUN_EXAMPLES = run_wind_turbine_nmpc
+#RUN_EXAMPLES = run_mass_spring_nmpc_example
 
 run_examples: $(RUN_EXAMPLES)
 
@@ -129,11 +140,11 @@ run_sim_crane_example:
 
 
 CRANE_GNSF_OBJS =
-CRANE_GNSF_OBJS += gnsf_crane_model/phi_fun.o
-CRANE_GNSF_OBJS += gnsf_crane_model/phi_fun_jac_y.o
-CRANE_GNSF_OBJS += gnsf_crane_model/f_lo_fun_jac_x1k1uz.o
-CRANE_GNSF_OBJS += gnsf_crane_model/get_matrices_fun.o
-CRANE_GNSF_OBJS += gnsf_crane_model/phi_jac_y_uhat.o
+CRANE_GNSF_OBJS += crane_nx9_model/crane_nx9_phi_fun.o
+CRANE_GNSF_OBJS += crane_nx9_model/crane_nx9_phi_fun_jac_y.o
+CRANE_GNSF_OBJS += crane_nx9_model/crane_nx9_f_lo_fun_jac_x1k1uz.o
+CRANE_GNSF_OBJS += crane_nx9_model/crane_nx9_get_matrices_fun.o
+CRANE_GNSF_OBJS += crane_nx9_model/crane_nx9_phi_jac_y_uhat.o
 CRANE_GNSF_OBJS += sim_gnsf_crane.o
 
 sim_gnsf_crane: $(CRANE_GNSF_OBJS)
@@ -205,7 +216,6 @@ run_wind_turbine_nmpc:
 
 WT_OBJS =
 WT_OBJS += wt_model_nx3/expl_ode_fun.o
-WT_OBJS += wt_model_nx3/expl_ode_jac.o
 WT_OBJS += wt_model_nx3/expl_vde_for.o
 WT_OBJS += wt_model_nx3/expl_vde_adj.o
 WT_OBJS += wt_model_nx3/impl_ode_fun.o
@@ -335,7 +345,6 @@ CHAIN_OBJS =
 ### explicit ###
 # 2 masses
 CHAIN_OBJS += chain_model/vde_chain_nm2.o
-CHAIN_OBJS += chain_model/jac_chain_nm2.o
 CHAIN_OBJS += chain_model/vde_adj_chain_nm2.o
 #CHAIN_OBJS += chain_model/vde_hess_chain_nm2.o
 CHAIN_OBJS += chain_model/ls_cost_nm2.o
@@ -343,7 +352,6 @@ CHAIN_OBJS += chain_model/ls_costN_nm2.o
 CHAIN_OBJS += chain_model/casadi_erk4_chain_nm2.o
 # 3 masses
 CHAIN_OBJS += chain_model/vde_chain_nm3.o
-CHAIN_OBJS += chain_model/jac_chain_nm3.o
 CHAIN_OBJS += chain_model/vde_adj_chain_nm3.o
 #CHAIN_OBJS += chain_model/vde_hess_chain_nm3.o
 CHAIN_OBJS += chain_model/ls_cost_nm3.o
@@ -351,7 +359,6 @@ CHAIN_OBJS += chain_model/ls_costN_nm3.o
 CHAIN_OBJS += chain_model/casadi_erk4_chain_nm3.o
 # 4 masses
 CHAIN_OBJS += chain_model/vde_chain_nm4.o
-CHAIN_OBJS += chain_model/jac_chain_nm4.o
 CHAIN_OBJS += chain_model/vde_adj_chain_nm4.o
 #CHAIN_OBJS += chain_model/vde_hess_chain_nm4.o
 CHAIN_OBJS += chain_model/ls_cost_nm4.o
@@ -359,7 +366,6 @@ CHAIN_OBJS += chain_model/ls_costN_nm4.o
 CHAIN_OBJS += chain_model/casadi_erk4_chain_nm4.o
 # 5 masses
 CHAIN_OBJS += chain_model/vde_chain_nm5.o
-CHAIN_OBJS += chain_model/jac_chain_nm5.o
 CHAIN_OBJS += chain_model/vde_adj_chain_nm5.o
 #CHAIN_OBJS += chain_model/vde_hess_chain_nm5.o
 CHAIN_OBJS += chain_model/ls_cost_nm5.o
@@ -367,12 +373,17 @@ CHAIN_OBJS += chain_model/ls_costN_nm5.o
 CHAIN_OBJS += chain_model/casadi_erk4_chain_nm5.o
 # 6 masses
 CHAIN_OBJS += chain_model/vde_chain_nm6.o
-CHAIN_OBJS += chain_model/jac_chain_nm6.o
 CHAIN_OBJS += chain_model/vde_adj_chain_nm6.o
 #CHAIN_OBJS += chain_model/vde_hess_chain_nm6.o
 CHAIN_OBJS += chain_model/ls_cost_nm6.o
 CHAIN_OBJS += chain_model/ls_costN_nm6.o
 CHAIN_OBJS += chain_model/casadi_erk4_chain_nm6.o
+# external cost
+CHAIN_OBJS += chain_model/chain_nm_2_external_cost.o
+CHAIN_OBJS += chain_model/chain_nm_3_external_cost.o
+CHAIN_OBJS += chain_model/chain_nm_4_external_cost.o
+CHAIN_OBJS += chain_model/chain_nm_5_external_cost.o
+CHAIN_OBJS += chain_model/chain_nm_6_external_cost.o
 ### implicit ###
 # 2 masses
 CHAIN_OBJS += implicit_chain_model/impl_ode_fun_chain_nm2.o
@@ -399,6 +410,7 @@ CHAIN_OBJS += implicit_chain_model/impl_ode_fun_chain_nm6.o
 CHAIN_OBJS += implicit_chain_model/impl_ode_fun_jac_x_xdot_chain_nm6.o
 CHAIN_OBJS += implicit_chain_model/impl_ode_fun_jac_x_xdot_u_chain_nm6.o
 CHAIN_OBJS += implicit_chain_model/impl_ode_jac_x_xdot_u_chain_nm6.o
+
 
 nonlinear_chain_ocp_nlp_no_interface: $(CHAIN_OBJS) nonlinear_chain_ocp_nlp_no_interface.o
 	$(CCC) -o nonlinear_chain_ocp_nlp_no_interface.out $(CHAIN_OBJS) nonlinear_chain_ocp_nlp_no_interface.o $(LDFLAGS) $(LIBS)
@@ -463,6 +475,29 @@ run_dense_qp:
 
 
 #################################################
+# pendulum model
+#################################################
+
+ENGINE_OBJS = 
+ENGINE_OBJS += engine_model/engine_impl_dae_fun.o
+ENGINE_OBJS += engine_model/engine_impl_dae_fun_jac_x_xdot_z.o
+ENGINE_OBJS += engine_model/engine_impl_dae_jac_x_xdot_u_z.o
+ENGINE_OBJS += engine_model/engine_ls_cost.o
+ENGINE_OBJS += engine_model/engine_ls_cost_N.o
+
+engine_example: $(ENGINE_OBJS) engine_example.o
+	$(CXX) -o engine_example.out $(ENGINE_OBJS) engine_example.o $(LDFLAGS) $(LIBS)
+	@echo
+	@echo " Example engine_example build complete."
+	@echo
+
+run_engine_example:
+	./engine_example.out
+
+
+
+
+#################################################
 # clean
 #################################################
 
@@ -474,7 +509,7 @@ clean_models:
 	rm -f chain_model/*.o
 	rm -f implicit_chain_model/*.o
 	rm -f crane_model/*.o
-	rm -f gnsf_crane_model/*.o
+	rm -f crane_nx9_model/*.o
 	rm -f wt_model_nx3/*.o
 	rm -f wt_model_nx6/*.o
 	rm -f wt_model_nx6/nx6p2/*.o

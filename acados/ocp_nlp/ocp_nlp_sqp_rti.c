@@ -22,6 +22,7 @@
 // external
 #include <assert.h>
 #include <math.h>
+#include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #if defined(ACADOS_WITH_OPENMP)
@@ -50,7 +51,7 @@
 int ocp_nlp_sqp_rti_opts_calculate_size(void *config_, void *dims_)
 {
     ocp_nlp_dims *dims = dims_;
-    ocp_nlp_solver_config *config = config_;
+    ocp_nlp_config *config = config_;
 
     ocp_qp_xcond_solver_config *qp_solver = config->qp_solver;
     ocp_nlp_dynamics_config **dynamics = config->dynamics;
@@ -97,7 +98,7 @@ int ocp_nlp_sqp_rti_opts_calculate_size(void *config_, void *dims_)
 void *ocp_nlp_sqp_rti_opts_assign(void *config_, void *dims_, void *raw_memory)
 {
     ocp_nlp_dims *dims = dims_;
-    ocp_nlp_solver_config *config = config_;
+    ocp_nlp_config *config = config_;
 
     ocp_qp_xcond_solver_config *qp_solver = config->qp_solver;
     ocp_nlp_dynamics_config **dynamics = config->dynamics;
@@ -158,7 +159,7 @@ void *ocp_nlp_sqp_rti_opts_assign(void *config_, void *dims_, void *raw_memory)
 void ocp_nlp_sqp_rti_opts_initialize_default(void *config_, void *dims_, void *opts_)
 {
     ocp_nlp_dims *dims = dims_;
-    ocp_nlp_solver_config *config = config_;
+    ocp_nlp_config *config = config_;
     ocp_nlp_sqp_rti_opts *opts = opts_;
 
     ocp_qp_xcond_solver_config *qp_solver = config->qp_solver;
@@ -175,7 +176,9 @@ void ocp_nlp_sqp_rti_opts_initialize_default(void *config_, void *dims_, void *o
 //    opts->compute_dual_sol = 1;
 
     opts->reuse_workspace = 1;
-    opts->num_threads = 4;
+#if defined(ACADOS_WITH_OPENMP)
+    opts->num_threads = ACADOS_NUM_THREADS;
+#endif
 
     // submodules opts
 
@@ -194,8 +197,9 @@ void ocp_nlp_sqp_rti_opts_initialize_default(void *config_, void *dims_, void *o
     for (ii = 0; ii < N; ii++)
     {
         dynamics[ii]->opts_initialize_default(dynamics[ii], dims->dynamics[ii], opts->dynamics[ii]);
-        dynamics[ii]->opts_set(dynamics[ii], dims->dynamics[ii], opts->dynamics[ii], COMPUTE_ADJ,
-            &compute_adj);
+        // dynamics[ii]->opts_set(dynamics[ii], dims->dynamics[ii], opts->dynamics[ii], COMPUTE_ADJ,
+        //     &compute_adj);
+        // TODO(oj): commented this out, check if this did anything!
     }
 
     // cost
@@ -221,7 +225,7 @@ void ocp_nlp_sqp_rti_opts_initialize_default(void *config_, void *dims_, void *o
 void ocp_nlp_sqp_rti_opts_update(void *config_, void *dims_, void *opts_)
 {
     ocp_nlp_dims *dims = dims_;
-    ocp_nlp_solver_config *config = config_;
+    ocp_nlp_config *config = config_;
     ocp_nlp_sqp_rti_opts *opts = opts_;
 
     ocp_qp_xcond_solver_config *qp_solver = config->qp_solver;
@@ -256,7 +260,43 @@ void ocp_nlp_sqp_rti_opts_update(void *config_, void *dims_, void *opts_)
     return;
 }
 
+static void ocp_nlp_sqp_rti_opts_set_maxIter(void *config_, void* opts_, const void* value)
+{
+    // ocp_nlp_sqp_rti_opts *opts = (ocp_nlp_sqp_rti_opts *) opts_;
+    int* maxIter = (int *) value;
+    // opts->maxIter = *maxIter;
+    if ( *maxIter > 1 )
+    {
+        printf("\nerror: option type not available in module\n");
+        exit(1);
+    }
+}
 
+
+void ocp_nlp_sqp_rti_opts_set(void *config_, void *opts_, const char *field, const void* value)
+{
+    ocp_nlp_sqp_rti_opts *opts = (ocp_nlp_sqp_rti_opts *) opts_;
+    ocp_nlp_config *config = config_;
+    if (!strcmp(field, "maxIter"))
+    {
+        ocp_nlp_sqp_rti_opts_set_maxIter(config_, opts_, value);
+    }
+    else
+    {
+        config->qp_solver->opts_set(config->qp_solver, opts->qp_solver_opts, field, value);
+    }
+}
+
+int ocp_nlp_sqp_rti_dyanimcs_opts_set(void *config_, void *opts_, int stage,
+                                     const char *field, void *value)
+{
+    ocp_nlp_config *config = config_;
+    ocp_nlp_sqp_rti_opts *opts = opts_;
+    ocp_nlp_dynamics_config *dyn_config = config->dynamics[stage];
+
+    return dyn_config->opts_set(dyn_config, opts->dynamics[stage], field, value);
+
+}
 
 /************************************************
  * memory
@@ -265,7 +305,7 @@ void ocp_nlp_sqp_rti_opts_update(void *config_, void *dims_, void *opts_)
 int ocp_nlp_sqp_rti_memory_calculate_size(void *config_, void *dims_, void *opts_)
 {
     ocp_nlp_dims *dims = dims_;
-    ocp_nlp_solver_config *config = config_;
+    ocp_nlp_config *config = config_;
     ocp_nlp_sqp_rti_opts *opts = opts_;
 
     ocp_qp_xcond_solver_config *qp_solver = config->qp_solver;
@@ -325,7 +365,7 @@ int ocp_nlp_sqp_rti_memory_calculate_size(void *config_, void *dims_, void *opts
 void *ocp_nlp_sqp_rti_memory_assign(void *config_, void *dims_, void *opts_, void *raw_memory)
 {
     ocp_nlp_dims *dims = dims_;
-    ocp_nlp_solver_config *config = config_;
+    ocp_nlp_config *config = config_;
     ocp_nlp_sqp_rti_opts *opts = opts_;
 
     ocp_qp_xcond_solver_config *qp_solver = config->qp_solver;
@@ -407,7 +447,7 @@ void *ocp_nlp_sqp_rti_memory_assign(void *config_, void *dims_, void *opts_, voi
 int ocp_nlp_sqp_rti_workspace_calculate_size(void *config_, void *dims_, void *opts_)
 {
     ocp_nlp_dims *dims = dims_;
-    ocp_nlp_solver_config *config = config_;
+    ocp_nlp_config *config = config_;
     ocp_nlp_sqp_rti_opts *opts = opts_;
 
     ocp_qp_xcond_solver_config *qp_solver = config->qp_solver;
@@ -546,7 +586,7 @@ static void ocp_nlp_sqp_rti_cast_workspace(void *config_, ocp_nlp_dims *dims,
                                            ocp_nlp_sqp_rti_work *work,
                                            ocp_nlp_sqp_rti_memory *mem, ocp_nlp_sqp_rti_opts *opts)
 {
-    ocp_nlp_solver_config *config = (ocp_nlp_solver_config *) config_;
+    ocp_nlp_config *config = (ocp_nlp_config *) config_;
 
     ocp_qp_xcond_solver_config *qp_solver = config->qp_solver;
     ocp_nlp_dynamics_config **dynamics = config->dynamics;
@@ -687,7 +727,7 @@ static void initialize_qp(void *config_, ocp_nlp_dims *dims, ocp_nlp_in *nlp_in,
                           ocp_nlp_out *nlp_out, ocp_nlp_sqp_rti_opts *opts,
                           ocp_nlp_sqp_rti_memory *mem, ocp_nlp_sqp_rti_work *work)
 {
-    ocp_nlp_solver_config *config = (ocp_nlp_solver_config *) config_;
+    ocp_nlp_config *config = (ocp_nlp_config *) config_;
 
     // loop index
     int ii;
@@ -723,7 +763,7 @@ static void linearize_update_qp_matrices(void *config_, ocp_nlp_dims *dims, ocp_
                                          ocp_nlp_out *nlp_out, ocp_nlp_sqp_rti_opts *opts,
                                          ocp_nlp_sqp_rti_memory *mem, ocp_nlp_sqp_rti_work *work)
 {
-    ocp_nlp_solver_config *config = (ocp_nlp_solver_config *) config_;
+    ocp_nlp_config *config = (ocp_nlp_config *) config_;
 
     // loop index
     int i;
@@ -818,7 +858,7 @@ static void linearize_update_qp_matrices(void *config_, ocp_nlp_dims *dims, ocp_
         //  if(i<N)
         //  {
         //   ocp_nlp_dynamics_opts *dynamics_opts = opts->dynamics[i];
-        //   sim_rk_opts *opts = dynamics_opts->sim_solver;
+        //   sim_opts *opts = dynamics_opts->sim_solver;
         //   if (opts->scheme != NULL && opts->scheme->type != exact)
         //   {
         //    for (int_t j = 0; j < nx; j++)
@@ -837,7 +877,7 @@ static void regularize_hessian(void *config_, ocp_nlp_dims *dims, ocp_nlp_in *nl
                                ocp_nlp_out *nlp_out, ocp_nlp_sqp_rti_opts *opts,
                                ocp_nlp_sqp_rti_memory *mem, ocp_nlp_sqp_rti_work *work)
 {
-    ocp_nlp_solver_config *config = (ocp_nlp_solver_config *) config_;
+    ocp_nlp_config *config = (ocp_nlp_config *) config_;
 
     if (config->regularization == NULL)
         return;
@@ -948,7 +988,7 @@ int ocp_nlp_sqp_rti(void *config_, void *dims_, void *nlp_in_, void *nlp_out_,
     acados_tic(&timer0);
 
     ocp_nlp_dims *dims = dims_;
-    ocp_nlp_solver_config *config = config_;
+    ocp_nlp_config *config = config_;
     ocp_nlp_sqp_rti_opts *opts = opts_;
     ocp_nlp_sqp_rti_memory *mem = mem_;
     ocp_nlp_in *nlp_in = nlp_in_;
@@ -1083,7 +1123,8 @@ int ocp_nlp_sqp_rti(void *config_, void *dims_, void *nlp_in_, void *nlp_out_,
         // restore number of threads
         omp_set_num_threads(num_threads_bkp);
 #endif
-        return -1;
+		mem->status = ACADOS_QP_FAILURE;
+		return mem->status;
     }
 
     sqp_update_variables(dims, nlp_out, opts, mem, work);
@@ -1106,25 +1147,108 @@ int ocp_nlp_sqp_rti(void *config_, void *dims_, void *nlp_in_, void *nlp_out_,
     // restore number of threads
     omp_set_num_threads(num_threads_bkp);
 #endif
-    return 0;
+	mem->status = ACADOS_SUCCESS;
+	return mem->status;
 }
 
+
+int ocp_nlp_sqp_rti_precompute(void *config_, void *dims_, void *nlp_in_, void *nlp_out_,
+                void *opts_, void *mem_, void *work_)
+{
+    ocp_nlp_dims *dims = dims_;
+    ocp_nlp_config *config = config_;
+    ocp_nlp_sqp_rti_opts *opts = opts_;
+    ocp_nlp_sqp_rti_memory *mem = mem_;
+    ocp_nlp_in *nlp_in = nlp_in_;
+    // ocp_nlp_out *nlp_out = nlp_out_;
+
+    // ocp_qp_xcond_solver_config *qp_solver = config->qp_solver;
+    ocp_nlp_sqp_rti_work *work = work_;
+
+    ocp_nlp_sqp_rti_cast_workspace(config, dims, work, mem, opts);
+
+    // extract dims
+    int N = dims->N;
+    int status = ACADOS_SUCCESS;
+
+    int ii;
+
+    // TODO(fuck_lint) checks
+    // TODO(fuck_lint) flag to enable/disable checks
+    for (ii = 0; ii <= N; ii++)
+    {
+        // TODO(fuck_lint) check that ns in opt_var == ns in constraints
+    }
+
+    // precompute
+    for (ii = 0; ii < N; ii++)
+    {
+        config->dynamics[ii]->model_set_T(nlp_in->Ts[ii], nlp_in->dynamics[ii]);
+        status = config->dynamics[ii]->precompute(config->dynamics[ii], dims->dynamics[ii],
+                                            nlp_in->dynamics[ii], opts->dynamics[ii],
+                                            mem->dynamics[ii], work->dynamics[ii]);
+        if (status != ACADOS_SUCCESS) return status;
+    }
+    return status;
+}
+
+
+void ocp_nlp_sqp_rti_get(void *config_, void *mem_, const char *field, void *return_value_)
+{
+    // ocp_nlp_config *config = config_;
+    ocp_nlp_sqp_rti_memory *mem = mem_;
+
+    if (!strcmp("sqp_iter", field))
+    {
+        int *value = return_value_;
+        *value = 1;
+    }
+    else if (!strcmp("status", field))
+    {
+        int *value = return_value_;
+        *value = mem->status;
+    }
+    else if (!strcmp("time_tot", field) || !strcmp("tot_time", field))
+    {
+        double *value = return_value_;
+        *value = mem->time_tot;
+    }
+    else if (!strcmp("time_qp_sol", field) || !strcmp("time_qp", field))
+    {
+        double *value = return_value_;
+        *value = mem->time_qp_sol;
+    }
+    else if (!strcmp("time_lin", field))
+    {
+        double *value = return_value_;
+        *value = mem->time_lin;
+    }
+    else
+    {
+        printf("\nerror: output type %s not available in ocp_nlp_sqp_rti module\n", field);
+        exit(1);
+    }
+}
 
 
 void ocp_nlp_sqp_rti_config_initialize_default(void *config_)
 {
-    ocp_nlp_solver_config *config = (ocp_nlp_solver_config *) config_;
+    ocp_nlp_config *config = (ocp_nlp_config *) config_;
 
     config->opts_calculate_size = &ocp_nlp_sqp_rti_opts_calculate_size;
     config->opts_assign = &ocp_nlp_sqp_rti_opts_assign;
     config->opts_initialize_default = &ocp_nlp_sqp_rti_opts_initialize_default;
     config->opts_update = &ocp_nlp_sqp_rti_opts_update;
+    config->opts_set = &ocp_nlp_sqp_rti_opts_set;
+    config->dynamics_opts_set = &ocp_nlp_sqp_rti_dyanimcs_opts_set;
     config->memory_calculate_size = &ocp_nlp_sqp_rti_memory_calculate_size;
     config->memory_assign = &ocp_nlp_sqp_rti_memory_assign;
     config->workspace_calculate_size = &ocp_nlp_sqp_rti_workspace_calculate_size;
     config->evaluate = &ocp_nlp_sqp_rti;
     config->config_initialize_default = &ocp_nlp_sqp_rti_config_initialize_default;
     config->regularization = NULL;
+    config->precompute = &ocp_nlp_sqp_rti_precompute;
+    config->get = &ocp_nlp_sqp_rti_get;
 
     return;
 }

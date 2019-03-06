@@ -164,7 +164,7 @@ void code_generator::generate_mdl_start(std::ostream& out)
     out << "\tnq[NUM_STAGES] = 0;\n";
     out << "\tnz[NUM_STAGES] = 0;\n";
 
-    out << "\n\tocp_nlp_solver_plan *plan = ocp_nlp_plan_create(NUM_STAGES);\n";
+    out << "\n\tocp_nlp_plan *plan = ocp_nlp_plan_create(NUM_STAGES);\n";
     out << "\tplan->nlp_solver = " + std::to_string(nlp_->plan_->nlp_solver) + ";\n";
 
     out << "\n\tfor (i = 0; i < NUM_STAGES; i++)\n";
@@ -183,9 +183,10 @@ void code_generator::generate_mdl_start(std::ostream& out)
     out << "\tplan->ocp_qp_solver_plan.qp_solver = " +
             std::to_string(nlp_->plan_->ocp_qp_solver_plan.qp_solver) + ";\n";
 
-    out << "\n\tocp_nlp_solver_config *config = ocp_nlp_config_create(*plan, NUM_STAGES);\n";
+    out << "\n\tocp_nlp_config *config = ocp_nlp_config_create(*plan);\n";
 
     out << "\n\tocp_nlp_dims *nlp_dims = ocp_nlp_dims_create(config);\n";
+    // TODO(oj): this cant work anymore, check if can be fixed
     out << "\tocp_nlp_dims_initialize(config, nx, nu, ny, nbx, nbu, ng, nh, nq, ns, nz, ";
     out << "nlp_dims);\n";
 
@@ -208,7 +209,8 @@ void code_generator::generate_mdl_start(std::ostream& out)
     out << "\t\tnlp_in->Ts[i] = LEN_INTERVAL;\n";
 
     out << "\n\tfor (i = 0; i < NUM_STAGES; ++i)\n";
-    out << "\t\tnlp_set_model_in_stage(config, nlp_in, i, \"expl_vde_for\", &expl_vde_for[i]);\n";
+    out << "\t\tocp_nlp_dynamics_model_set(config, nlp_in, i, \"expl_vde_for\"";
+    out << ", &expl_vde_for[i]);\n";
 
     generate_ls_cost_initialization(out);
 
@@ -222,7 +224,7 @@ void code_generator::generate_mdl_start(std::ostream& out)
 
     out << "\n\tocp_nlp_out *nlp_out = ocp_nlp_out_create(config, nlp_dims);\n";
 
-    out << "\n\tocp_nlp_solver *nlp_solver = ocp_nlp_create(config, nlp_dims, nlp_opts);\n";
+    out << "\n\tocp_nlp_solver *nlp_solver = ocp_nlp_solver_create(config, nlp_dims, nlp_opts);\n";
 
     out << "\n\tssGetPWork(S)[0] = (void *) nlp_dims;\n";
     out << "\tssGetPWork(S)[1] = (void *) nlp_in;\n";

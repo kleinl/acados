@@ -26,7 +26,6 @@ file(GLOB CHAIN_MODEL_SRC
     ### explicit ###
     # 2 masses
     chain_model/vde_chain_nm2.c
-    chain_model/jac_chain_nm2.c
     chain_model/vde_adj_chain_nm2.c
     #chain_model/vde_hess_chain_nm2.c
     chain_model/ls_cost_nm2.c
@@ -34,7 +33,6 @@ file(GLOB CHAIN_MODEL_SRC
     chain_model/casadi_erk4_chain_nm2.c
     # 3 masses
     chain_model/vde_chain_nm3.c
-    chain_model/jac_chain_nm3.c
     chain_model/vde_adj_chain_nm3.c
     #chain_model/vde_hess_chain_nm3.c
     chain_model/ls_cost_nm3.c
@@ -42,7 +40,6 @@ file(GLOB CHAIN_MODEL_SRC
     chain_model/casadi_erk4_chain_nm3.c
     # 4 masses
     chain_model/vde_chain_nm4.c
-    chain_model/jac_chain_nm4.c
     chain_model/vde_adj_chain_nm4.c
     #chain_model/vde_hess_chain_nm4.c
     chain_model/ls_cost_nm4.c
@@ -50,7 +47,6 @@ file(GLOB CHAIN_MODEL_SRC
     chain_model/casadi_erk4_chain_nm4.c
     # 5 masses
     chain_model/vde_chain_nm5.c
-    chain_model/jac_chain_nm5.c
     chain_model/vde_adj_chain_nm5.c
     #chain_model/vde_hess_chain_nm5.c
     chain_model/ls_cost_nm5.c
@@ -59,12 +55,18 @@ file(GLOB CHAIN_MODEL_SRC
     # NOTE: chain_model/casadi_erk4_chain_nm5.c (and 6) commented, because compilation takes quite a while
     # 6 masses
     chain_model/vde_chain_nm6.c
-    chain_model/jac_chain_nm6.c
     chain_model/vde_adj_chain_nm6.c
     #chain_model/vde_hess_chain_nm6.c
     chain_model/ls_cost_nm6.c
     chain_model/ls_costN_nm6.c
     # chain_model/casadi_erk4_chain_nm6.c
+
+    # external cost
+    chain_model/chain_nm_2_external_cost.c
+    chain_model/chain_nm_3_external_cost.c
+    chain_model/chain_nm_4_external_cost.c
+    chain_model/chain_nm_5_external_cost.c
+    chain_model/chain_nm_6_external_cost.c
 
     ### implicit ###
     # 2 masses
@@ -97,6 +99,7 @@ file(GLOB CHAIN_MODEL_SRC
     implicit_chain_model/impl_ode_fun_jac_x_xdot_u_chain_nm6.c
     implicit_chain_model/impl_ode_jac_x_xdot_u_chain_nm6.c
     implicit_chain_model/impl_ode_jac_x_u_chain_nm6.c
+
 )
 
 file(GLOB CRANE_MODEL_SRC
@@ -112,7 +115,6 @@ file(GLOB CRANE_MODEL_SRC
 
 file(GLOB WT_MODEL_NX3_SRC
     wt_model_nx3/expl_ode_fun.c
-    wt_model_nx3/expl_ode_jac.c
     wt_model_nx3/expl_vde_for.c
     wt_model_nx3/expl_vde_adj.c
     wt_model_nx3/impl_ode_fun.c
@@ -171,11 +173,11 @@ file(GLOB INV_PENDULUM_SRC
 )
 
 file(GLOB GNSF_CRANE_SRC
-    gnsf_crane_model/phi_fun.c
-    gnsf_crane_model/phi_fun_jac_y.c
-    gnsf_crane_model/phi_jac_y_uhat.c
-    gnsf_crane_model/f_lo_fun_jac_x1k1uz.c
-    gnsf_crane_model/get_matrices_fun.c
+    crane_nx9_model/crane_nx9_phi_fun.c
+    crane_nx9_model/crane_nx9_phi_fun_jac_y.c
+    crane_nx9_model/crane_nx9_phi_jac_y_uhat.c
+    crane_nx9_model/crane_nx9_f_lo_fun_jac_x1k1uz.c
+    crane_nx9_model/crane_nx9_get_matrices_fun.c
 )
 
 file(GLOB ENGINE_SRC
@@ -229,13 +231,6 @@ add_executable(pendulum_scqp pendulum_scqp.cpp
 target_link_libraries(pendulum_scqp acados)
 add_test(pendulum_scqp pendulum_scqp)
 
-add_executable(pendulum_sqp_gn pendulum_sqp_gn.cpp
-    pendulum_model/pendulum_ode_expl_vde_forw.c
-    pendulum_model/pendulum_ode_expl_ode_hess.c
-    pendulum_model/constraint.c
-    pendulum_model/position.c)
-target_link_libraries(pendulum_sqp_gn acados)
-add_test(pendulum_sqp_gn pendulum_sqp_gn)
 
 # -------------------- mass_spring
 add_executable(mass_spring_example mass_spring_example.c mass_spring_model/mass_spring_qp.c)
@@ -257,10 +252,6 @@ add_test(mass_spring_offline_fcond_qpoases_split mass_spring_example)
 add_executable(mass_spring_nmpc_example mass_spring_nmpc_example.c mass_spring_model/mass_spring_qp.c)
 target_link_libraries(mass_spring_nmpc_example acados)
 add_test(mass_spring_nmpc_example mass_spring_example)
-
-add_executable(mass_spring_example_no_interface mass_spring_example_no_interface.c mass_spring_model/mass_spring_qp.c)
-target_link_libraries(mass_spring_example_no_interface acados)
-add_test(mass_spring_example_no_interface mass_spring_example_no_interface)
 
 add_executable(sim_crane_example sim_crane_example.c ${CRANE_MODEL_SRC})
 target_link_libraries(sim_crane_example acados)

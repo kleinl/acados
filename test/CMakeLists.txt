@@ -21,10 +21,6 @@
 
 find_package(Eigen3)
 
-if(NOT EXISTS "${PROJECT_SOURCE_DIR}/external/casadi-octave-v3.4.0")
-    message(WARNING "You chose to run unit tests but 'casadi-octave-v3.4.0' was not found in: ${PROJECT_SOURCE_DIR}/external")
-endif()
-
 include_directories(${EIGEN3_INCLUDE_DIR})
 
 # add_subdirectory(ocp_nlp)
@@ -39,7 +35,6 @@ set(TEST_OCP_NLP_SRC
     ### explicit ###
     # 2 masses
     ${CMAKE_SOURCE_DIR}/examples/c/chain_model/vde_chain_nm2.c
-    ${CMAKE_SOURCE_DIR}/examples/c/chain_model/jac_chain_nm2.c
     ${CMAKE_SOURCE_DIR}/examples/c/chain_model/vde_adj_chain_nm2.c
     #chain_model/vde_hess_chain_nm2.c
     ${CMAKE_SOURCE_DIR}/examples/c/chain_model/ls_cost_nm2.c
@@ -47,7 +42,6 @@ set(TEST_OCP_NLP_SRC
     ${CMAKE_SOURCE_DIR}/examples/c/chain_model/casadi_erk4_chain_nm2.c
     # 3 masses
     ${CMAKE_SOURCE_DIR}/examples/c/chain_model/vde_chain_nm3.c
-    ${CMAKE_SOURCE_DIR}/examples/c/chain_model/jac_chain_nm3.c
     ${CMAKE_SOURCE_DIR}/examples/c/chain_model/vde_adj_chain_nm3.c
     #chain_model/vde_hess_chain_nm3.c
     ${CMAKE_SOURCE_DIR}/examples/c/chain_model/ls_cost_nm3.c
@@ -55,7 +49,6 @@ set(TEST_OCP_NLP_SRC
     ${CMAKE_SOURCE_DIR}/examples/c/chain_model/casadi_erk4_chain_nm3.c
     # 4 masses
     ${CMAKE_SOURCE_DIR}/examples/c/chain_model/vde_chain_nm4.c
-    ${CMAKE_SOURCE_DIR}/examples/c/chain_model/jac_chain_nm4.c
     ${CMAKE_SOURCE_DIR}/examples/c/chain_model/vde_adj_chain_nm4.c
     #chain_model/vde_hess_chain_nm4.c
     ${CMAKE_SOURCE_DIR}/examples/c/chain_model/ls_cost_nm4.c
@@ -63,7 +56,6 @@ set(TEST_OCP_NLP_SRC
     ${CMAKE_SOURCE_DIR}/examples/c/chain_model/casadi_erk4_chain_nm4.c
     # 5 masses
     ${CMAKE_SOURCE_DIR}/examples/c/chain_model/vde_chain_nm5.c
-    ${CMAKE_SOURCE_DIR}/examples/c/chain_model/jac_chain_nm5.c
     ${CMAKE_SOURCE_DIR}/examples/c/chain_model/vde_adj_chain_nm5.c
     #chain_model/vde_hess_chain_nm5.c
     ${CMAKE_SOURCE_DIR}/examples/c/chain_model/ls_cost_nm5.c
@@ -71,12 +63,18 @@ set(TEST_OCP_NLP_SRC
     #${CMAKE_SOURCE_DIR}/examples/c/chain_model/casadi_erk4_chain_nm5.c
     # 6 masses
     ${CMAKE_SOURCE_DIR}/examples/c/chain_model/vde_chain_nm6.c
-    ${CMAKE_SOURCE_DIR}/examples/c/chain_model/jac_chain_nm6.c
     ${CMAKE_SOURCE_DIR}/examples/c/chain_model/vde_adj_chain_nm6.c
     #chain_model/vde_hess_chain_nm6.c
     ${CMAKE_SOURCE_DIR}/examples/c/chain_model/ls_cost_nm6.c
     ${CMAKE_SOURCE_DIR}/examples/c/chain_model/ls_costN_nm6.c
     #${CMAKE_SOURCE_DIR}/examples/c/chain_model/casadi_erk4_chain_nm6.c
+
+    # external cost
+    ${CMAKE_SOURCE_DIR}/examples/c/chain_model/chain_nm_2_external_cost.c
+    ${CMAKE_SOURCE_DIR}/examples/c/chain_model/chain_nm_3_external_cost.c
+    ${CMAKE_SOURCE_DIR}/examples/c/chain_model/chain_nm_4_external_cost.c
+    ${CMAKE_SOURCE_DIR}/examples/c/chain_model/chain_nm_5_external_cost.c
+    ${CMAKE_SOURCE_DIR}/examples/c/chain_model/chain_nm_6_external_cost.c
 
     ### implicit ###
     # 2 masses
@@ -139,7 +137,6 @@ set(TEST_OCP_QP_SRC
 
 set(TEST_SIM_ODE_SRC
     ${PROJECT_SOURCE_DIR}/examples/c/wt_model_nx3/expl_ode_fun.c
-    ${PROJECT_SOURCE_DIR}/examples/c/wt_model_nx3/expl_ode_jac.c
     ${PROJECT_SOURCE_DIR}/examples/c/wt_model_nx3/expl_vde_for.c
     ${PROJECT_SOURCE_DIR}/examples/c/wt_model_nx3/expl_vde_adj.c
     ${PROJECT_SOURCE_DIR}/examples/c/wt_model_nx3/impl_ode_fun.c
@@ -169,7 +166,6 @@ set(TEST_SIM_DAE_SRC
 
 set(TEST_SIM_HESS_SRC
     ${PROJECT_SOURCE_DIR}/examples/c/pendulum_model/pendulum_ode_expl_ode_fun.c
-    ${PROJECT_SOURCE_DIR}/examples/c/pendulum_model/pendulum_ode_expl_ode_jac.c
     ${PROJECT_SOURCE_DIR}/examples/c/pendulum_model/pendulum_ode_expl_vde_forw.c
     ${PROJECT_SOURCE_DIR}/examples/c/pendulum_model/pendulum_ode_expl_vde_adj.c
     ${PROJECT_SOURCE_DIR}/examples/c/pendulum_model/pendulum_ode_expl_ode_hess.c
@@ -188,7 +184,7 @@ add_executable(unit_tests
     # $<TARGET_OBJECTS:ocp_nlp_gen>
     # $<TARGET_OBJECTS:ocp_qp_gen>
     ${TEST_SIM_HESS_SRC}
-    ${TEST_SIM_DAE_SRC}
+    # ${TEST_SIM_DAE_SRC}
     ${TEST_SIM_ODE_SRC}
     ${TEST_OCP_QP_SRC}
     ${TEST_OCP_NLP_SRC}

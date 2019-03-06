@@ -29,7 +29,6 @@
 
 // acados
 #include "acados/sim/sim_common.h"
-#include "acados/sim/sim_gnsf.h"
 #include "acados/utils/external_function_generic.h"
 #include "acados/utils/math.h"
 
@@ -39,6 +38,12 @@
 // crane dae model
 #include "examples/c/inverted_pendulum_model/inverted_pendulum_model.h"
 
+// blasfeo
+#include "blasfeo/include/blasfeo_common.h"
+#include "blasfeo/include/blasfeo_d_aux.h"
+#include "blasfeo/include/blasfeo_d_aux_ext_dep.h"
+#include "blasfeo/include/blasfeo_d_blas.h"
+#include "blasfeo/include/blasfeo_v_aux_ext_dep.h"
 
 
 int main()
@@ -48,15 +53,15 @@ int main()
 	* initialization
 	************************************************/
 
-    const int nx    = 6;
-    const int nu    = 1;
-    const int nz    = 5;
+    int nx    = 6;
+    int nu    = 1;
+    int nz    = 5;
 
-    const int nx1   = 5;  // gnsf split
-    const int nx2   = 1;
-    const int n_out = 3;
-    const int ny    = 8;
-    const int nuhat = 1;
+    int nx1   = 5;  // gnsf split
+    int nz1   = 5;
+    int nout  = 3;
+    int ny    = 8;
+    int nuhat = 1;
 
 	int nsim = 1;
 
@@ -199,7 +204,7 @@ int main()
         2: IRK
         3: GNSF
                                 */
-	for (int nss = 2; nss < 3; nss++)
+	for (int nss = 2; nss < 4; nss++)
 	{
 		/************************************************
 		* sim plan & config
@@ -223,40 +228,38 @@ int main()
 		}
 
 		// create correct config based on plan
-		sim_solver_config *config = sim_config_create(plan);
+		sim_config *config = sim_config_create(plan);
 
     /* sim dims */
 
 		void *dims = sim_dims_create(config);
-		config->set_nx(dims, nx);
-		config->set_nu(dims, nu);
-        config->set_nz(dims, nz);
+		sim_dims_set(config, dims, "nx", &nx);
+		sim_dims_set(config, dims, "nu", &nu);
+		sim_dims_set(config, dims, "nz", &nz);
 
         // GNSF -- set additional dimensions
-        sim_gnsf_dims *gnsf_dim;
         if (plan.sim_solver == GNSF)
         {
-            gnsf_dim = (sim_gnsf_dims *) dims;
-            gnsf_dim->nx1   = nx1;
-            gnsf_dim->nx2   = nx2;
-            gnsf_dim->ny    = ny;
-            gnsf_dim->nuhat = nuhat;
-            gnsf_dim->n_out = n_out;
+            sim_dims_set(config, dims, "nx1", &nx1);
+            sim_dims_set(config, dims, "nz1", &nz1);
+            sim_dims_set(config, dims, "nout", &nout);
+            sim_dims_set(config, dims, "ny", &ny);
+            sim_dims_set(config, dims, "nuhat", &nuhat);
         }
 
     /* sim options */
 
         void *opts_ = sim_opts_create(config, dims);
-        sim_rk_opts *opts = (sim_rk_opts *) opts_;
+        sim_opts *opts = (sim_opts *) opts_;
         config->opts_initialize_default(config, dims, opts);
 
-        opts->jac_reuse = false;        // jacobian reuse
+        opts->jac_reuse = true;        // jacobian reuse
         opts->newton_iter = 3;          // number of newton iterations per integration step
 
         opts->ns                = 3;    // number of stages in rk integrator
         opts->num_steps         = 3;    // number of steps
         opts->sens_forw         = true;
-        opts->sens_adj          = false;
+        opts->sens_adj          = true;
         opts->output_z          = true;
         opts->sens_algebraic    = true;
         opts->sens_hess         = true;
@@ -273,35 +276,24 @@ int main()
         {
             case IRK:  // IRK
             {
-                sim_set_model(config, in, "impl_ode_fun", &impl_ode_fun);
-                sim_set_model(config, in, "impl_ode_fun_jac_x_xdot",
+                config->model_set(in->model, "impl_ode_fun", &impl_ode_fun);
+                config->model_set(in->model, "impl_ode_fun_jac_x_xdot",
                         &impl_ode_fun_jac_x_xdot);
-                sim_set_model(config, in, "impl_ode_jac_x_xdot_u", &impl_ode_jac_x_xdot_u);
-                sim_set_model(config, in, "impl_ode_hess", &impl_ode_hess);
+                config->model_set(in->model, "impl_ode_jac_x_xdot_u", &impl_ode_jac_x_xdot_u);
+                config->model_set(in->model, "impl_ode_hess", &impl_ode_hess);
                 break;
             }
             case GNSF:  // GNSF
             {
                 // set model funtions
-                sim_set_model(config, in, "phi_fun", &phi_fun);
-                sim_set_model(config, in, "phi_fun_jac_y", &phi_fun_jac_y);
-                sim_set_model(config, in, "phi_jac_y_uhat", &phi_jac_y_uhat);
-                sim_set_model(config, in, "f_lo_jac_x1_x1dot_u_z", &f_lo_fun_jac_x1k1uz);
+                config->model_set(in->model, "phi_fun", &phi_fun);
+                config->model_set(in->model, "phi_fun_jac_y", &phi_fun_jac_y);
+                config->model_set(in->model, "phi_jac_y_uhat", &phi_jac_y_uhat);
+                config->model_set(in->model, "f_lo_jac_x1_x1dot_u_z", &f_lo_fun_jac_x1k1uz);
+                config->model_set(in->model, "get_gnsf_matrices", &get_matrices_fun);
 
-                // import model matrices
-                external_function_generic *get_model_matrices =
-                        (external_function_generic *) &get_matrices_fun;
-                gnsf_model *model = (gnsf_model *) in->model;
-                sim_gnsf_import_matrices(gnsf_dim, model, get_model_matrices);
                 break;
             }
-            // case NEW_LIFTED_IRK:  // new_lifted_irk
-            // {
-            //     sim_set_model(config, in, "impl_ode_fun", &impl_ode_fun);
-            //     sim_set_model(config, in, "impl_ode_fun_jac_x_xdot_u",
-            //              &impl_ode_fun_jac_x_xdot_u);
-            //     break;
-            // }
             default :
             {
                 printf("\nnot enough sim solvers implemented!\n");
@@ -322,14 +314,10 @@ int main()
             in->S_adj[ii] = 0.0;
 
     /* sim solver  */
-        sim_solver *sim_solver = sim_create(config, dims, opts);
+        sim_solver *sim_solver = sim_solver_create(config, dims, opts);
         int acados_return;
 
-        if (plan.sim_solver == GNSF){  // for gnsf: perform precomputation
-            gnsf_model *model = (gnsf_model *) in->model;
-            sim_gnsf_precompute(config, gnsf_dim, model, opts,
-                        sim_solver->mem, sim_solver->work, in->T);
-        }
+        sim_precompute(sim_solver, in, out);
 
     /* print solver info */
         switch (plan.sim_solver)
@@ -445,6 +433,12 @@ int main()
             printf("algebraic sensitivities \n");
             d_print_exp_mat(nz, NF, &out->S_algebraic[0], nz);
         }
+
+		if(opts->sens_hess){
+			double *S_hess = out->S_hess;
+			printf("S_hess: \n");
+			d_print_exp_mat(nx+nu, nx+nu, S_hess, nx+nu);
+		}
 
     #if 0
 		printf("\n");

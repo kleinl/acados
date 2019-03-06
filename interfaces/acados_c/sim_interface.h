@@ -26,7 +26,7 @@ extern "C" {
 
 #include "acados/sim/sim_common.h"
 
-typedef enum { ERK, LIFTED_IRK, IRK, GNSF, NEW_LIFTED_IRK } sim_solver_t;
+typedef enum { ERK, IRK, GNSF, LIFTED_IRK } sim_solver_t;
 
 typedef struct
 {
@@ -35,36 +35,67 @@ typedef struct
 
 typedef struct
 {
-    sim_solver_config *config;
+    sim_config *config;
     void *dims;
     void *opts;
     void *mem;
     void *work;
 } sim_solver;
 
+/* config */
 //
-sim_solver_config *sim_config_create(sim_solver_plan plan);
+sim_config *sim_config_create(sim_solver_plan plan);
+//
+void sim_config_destroy(void *config);
+
+/* dims */
 //
 void *sim_dims_create(void *config_);
 //
-sim_in *sim_in_create(sim_solver_config *config, void *dims);
+void sim_dims_destroy(void *dims);
 //
-int sim_set_model(sim_solver_config *config, sim_in *in, const char *fun_type, void *fun_ptr);
+void sim_dims_set(sim_config *config, void *dims, const char *field, const int* value);
 //
-int sim_set_model_internal(sim_solver_config *config, void *model, const char *fun_type,
-                           void *fun_ptr);
+void sim_dims_get(sim_config *config, void *dims, const char *field, int* value);
+
+/* in */
 //
-sim_out *sim_out_create(sim_solver_config *config, void *dims);
+sim_in *sim_in_create(sim_config *config, void *dims);
 //
-void *sim_opts_create(sim_solver_config *config, void *dims);
+void sim_in_destroy(void *out);
 //
-int sim_calculate_size(sim_solver_config *config, void *dims, void *opts_);
+int sim_in_set(void *config_, void *dims_, sim_in *in, const char *field, void *value);
+
+
+/* out */
 //
-sim_solver *sim_assign(sim_solver_config *config, void *dims, void *opts_, void *raw_memory);
+sim_out *sim_out_create(sim_config *config, void *dims);
 //
-sim_solver *sim_create(sim_solver_config *config, void *dims, void *opts_);
+void sim_out_destroy(void *out);
 //
-int sim_solve(sim_solver *solver, sim_in *qp_in, sim_out *qp_out);
+int sim_out_get(void *config, void *dims, sim_out *out, const char *field, void *value);
+
+/* opts */
+//
+void *sim_opts_create(sim_config *config, void *dims);
+//
+void sim_opts_destroy(void *opts);
+//
+int sim_opts_set(sim_config *config, void *opts, const char *field,
+                           void *value);
+/* solver */
+//
+int sim_calculate_size(sim_config *config, void *dims, void *opts_);
+//
+sim_solver *sim_assign(sim_config *config, void *dims, void *opts_, void *raw_memory);
+//
+sim_solver *sim_solver_create(sim_config *config, void *dims, void *opts_);
+//
+void sim_solver_destroy(void *solver);
+//
+int sim_solve(sim_solver *solver, sim_in *in, sim_out *out);
+//
+int sim_precompute(sim_solver *solver, sim_in *in, sim_out *out);
 
 #ifdef __cplusplus
 } /* extern "C" */

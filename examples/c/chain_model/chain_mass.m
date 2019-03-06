@@ -51,7 +51,7 @@ cost_ux = [cost_u; cost_x];
 cost_y = [cost_x; cost_u];
 cost_jac_y = jacobian(cost_y, cost_ux);
 
-ls_cost = Function(['ls_cost_nm' num2str(Nm)], {[cost_u; cost_x]}, {cost_y, cost_jac_y'});
+ls_cost = Function(['ls_cost_nm' num2str(Nm)], {cost_x, cost_u}, {cost_y, cost_jac_y'});
 ls_cost.generate(['ls_cost_nm' num2str(Nm)], opts);
 
 % Trivial terminal LS cost function
@@ -61,13 +61,13 @@ ls_costN = Function(['ls_costN_nm' num2str(Nm)], {cost_x}, {cost_yN, cost_jac_yN
 ls_costN.generate(['ls_costN_nm' num2str(Nm)], opts);
 
 % Empty path constraints
-pathcon_g = SX.zeros(0);
+pathcon_g = cost_x;
 pathcon_jac_g = jacobian(pathcon_g, cost_ux);
-pathcon = Function(['pathcon_nm' num2str(Nm)], {[cost_u; cost_x]}, {pathcon_g, pathcon_jac_g});
+pathcon = Function(['pathcon_nm' num2str(Nm)], {cost_x, cost_u}, {pathcon_g, pathcon_jac_g});
 pathcon.generate(['pathcon_nm' num2str(Nm)], opts);
 
 % Empty terminal path constraints
-pathcon_gN = SX.zeros(0);
+pathcon_gN = cost_x;
 pathcon_jac_gN = jacobian(pathcon_gN, cost_x);
 pathconN = Function(['pathconN_nm' num2str(Nm)], {cost_x}, {pathcon_gN, pathcon_jac_gN});
 pathconN.generate(['pathconN_nm' num2str(Nm)], opts);
@@ -156,10 +156,10 @@ vdeP = vdeP + jtimes(dae.ode,dae.x,Sp);
 vdeFun = Function(['vde_chain_nm' num2str(Nm)],{dae.x,Sx,Sp,dae.p},{dae.ode,vdeX,vdeP});
 
 jacX = SX.zeros(nx,nx) + jacobian(dae.ode,dae.x);
-jacFun = Function(['jac_chain_nm' num2str(Nm)],{dae.x,dae.p},{dae.ode,jacX});
+% jacFun = Function(['jac_chain_nm' num2str(Nm)],{dae.x,dae.p},{dae.ode,jacX});
 
 vdeFun.generate(['vde_chain_nm' num2str(Nm)], opts);
-jacFun.generate(['jac_chain_nm' num2str(Nm)], opts);
+% jacFun.generate(['jac_chain_nm' num2str(Nm)], opts);
 
 lambdaX = SX.sym('lambdaX', nx, 1);
 adj = jtimes(dae.ode, [dae.x; u], lambdaX, true);

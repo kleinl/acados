@@ -40,18 +40,28 @@ extern "C" {
 #include "blasfeo/include/blasfeo_i_aux_ext_dep.h"
 #include "blasfeo/include/blasfeo_target.h"
 
+/* 
+GNSF - Generalized Nonlinear Static Feedback Model
+has the following form
+
+https://github.com/acados/acados/files/2318322/gnsf_structure.pdf
+More details can be found in Master thesis of Jonathan Frey
+*/
+
 typedef struct
 {
-    int nx;
-    int nu;
-    int nz;
-    int nx1;
-    int nx2;
-    int n_out;
-    int ny;
-    int nuhat;
+    int nx; // total number of differential states
+    int nu; // total number of inputs
+    int nz; // total number of algebraic states
+    int nx1; // number of differential states in NSF part
+    int nz1; // number of algebraic states in NSF part
+    int n_out; // output dimension of phi
+    int ny; // dimension of first input of phi
+    int nuhat; // dimension of second input of phi
 
 } sim_gnsf_dims;
+
+
 
 typedef struct
 {
@@ -60,10 +70,19 @@ typedef struct
     external_function_generic *phi_fun;
     external_function_generic *phi_fun_jac_y;
     external_function_generic *phi_jac_y_uhat;
+
     // f_lo: linear output function
     external_function_generic *f_lo_fun_jac_x1_x1dot_u_z;
 
+    // to import model matrices
+    external_function_generic *get_gnsf_matrices;
+
+    // flag indicating, if model defining matrices are imported via external (casadi) function,
+    //    [default]: true -> auto;
+    bool auto_import_gnsf;
+
     /* model defining matrices */
+    // TODO: add setters to set manually
     double *A;
     double *B;
     double *C;
@@ -73,7 +92,13 @@ typedef struct
     double *L_xdot;
     double *L_z;
     double *L_u;
+
     double *A_LO;
+    double *E_LO;
+
+//    double *B_LO; idea, maybe detect linear dependency on controlls to treat
+// fully linear systems more efficiently
+
 
     /* constant vector */
     double *c;
@@ -112,18 +137,11 @@ typedef struct
     struct blasfeo_dmat LLx;
     struct blasfeo_dmat LLK;
 
-    struct blasfeo_dmat M2;
-    struct blasfeo_dmat dK2_dx2_work;
-
     int *ipivEE1;  // index of pivot vector
     int *ipivEE2;
     int *ipivQQ1;
-    int *ipivM2;
 
     // for algebraic sensitivity propagation
-    struct blasfeo_dmat K0x;
-    struct blasfeo_dmat K0u;
-    struct blasfeo_dmat K0f;
     struct blasfeo_dmat Q1;
 
     // for constant term in NSF
@@ -139,7 +157,7 @@ typedef struct
 
     int *ipiv;  // index of pivot vector
 
-    struct blasfeo_dvec *ff_traj;
+    struct blasfeo_dvec *vv_traj;
     struct blasfeo_dvec *yy_traj;
     struct blasfeo_dmat *f_LO_jac_traj;
 
@@ -157,7 +175,7 @@ typedef struct
     struct blasfeo_dvec K1_val;
     struct blasfeo_dvec f_LO_val;
     struct blasfeo_dvec x1_stage_val;
-    struct blasfeo_dvec Z_val;
+    struct blasfeo_dvec Z1_val;
 
     struct blasfeo_dvec K1u;
     struct blasfeo_dvec Zu;
@@ -165,26 +183,23 @@ typedef struct
 
     struct blasfeo_dvec uhat;
 
-    struct blasfeo_dmat J_r_ff;
+    struct blasfeo_dmat J_r_vv;
     struct blasfeo_dmat J_r_x1u;
 
     struct blasfeo_dmat dK1_dx1;
     struct blasfeo_dmat dK1_du;
     struct blasfeo_dmat dZ_dx1;
     struct blasfeo_dmat dZ_du;
-    struct blasfeo_dmat aux_G2_x1;
-    struct blasfeo_dmat aux_G2_u;
     struct blasfeo_dmat J_G2_K1;
 
     struct blasfeo_dmat dK2_dx1;
     struct blasfeo_dmat dK2_du;
-    struct blasfeo_dmat dK2_dff;
+    struct blasfeo_dmat dK2_dvv;
     struct blasfeo_dmat dxf_dwn;
     struct blasfeo_dmat S_forw_new;
     struct blasfeo_dmat S_forw;
 
-    struct blasfeo_dmat aux_G2_ff;
-    struct blasfeo_dmat dPsi_dff;
+    struct blasfeo_dmat dPsi_dvv;
     struct blasfeo_dmat dPsi_dx;
     struct blasfeo_dmat dPsi_du;
 
@@ -192,59 +207,75 @@ typedef struct
 
     // memory only available if (opts->sens_algebraic)
     struct blasfeo_dvec x0dot_1;
-    struct blasfeo_dvec z0;
-    struct blasfeo_dmat dz0_dx1u;  // (nz) * (nx1+nu);
-    struct blasfeo_dmat dr0_dff0;  // (n_out * n_out)
-    int *ipiv_ff0;
-
+    struct blasfeo_dvec z0_1;
+    struct blasfeo_dmat dz10_dx1u;  // (nz1) * (nx1+nu);
+    struct blasfeo_dmat dr0_dvv0;  // (n_out * n_out)
+    struct blasfeo_dmat f_LO_jac0; // (nx2+nz2) * (2*nx1 + nz1 + nu)
+    struct blasfeo_dmat sens_z2_rhs; // (nx2 + nz2) * (nx1 + nu)
+    int *ipiv_vv0;
 
 } gnsf_workspace;
 
 // memory
 typedef struct
 {
-    // scaled butcher table
+    // simulation time for one step
+    double dt;
+
+    // (scaled) butcher table
     double *A_dt;
     double *b_dt;
     double *c_butcher;
-    double dt;
+
+    // value used to initialize integration variables - corresponding to value of phi
+    double *phi_guess;  //  n_out
 
     // precomputed matrices
-    struct blasfeo_dmat KKf;
+    struct blasfeo_dmat KKv;
     struct blasfeo_dmat KKx;
     struct blasfeo_dmat KKu;
 
-    struct blasfeo_dmat YYf;
+    struct blasfeo_dmat YYv;
     struct blasfeo_dmat YYx;
     struct blasfeo_dmat YYu;
 
-    struct blasfeo_dmat ZZf;
+    struct blasfeo_dmat ZZv;
     struct blasfeo_dmat ZZx;
     struct blasfeo_dmat ZZu;
 
     struct blasfeo_dmat ALO;
-    struct blasfeo_dmat M2inv;
+    struct blasfeo_dmat M2_LU;
+    int *ipivM2;
+
     struct blasfeo_dmat dK2_dx2;
 
     struct blasfeo_dmat Lu;
-
-    // for algebraic sensitivities
-    struct blasfeo_dmat Z0x;
-    struct blasfeo_dmat Z0u;
-    struct blasfeo_dmat Z0f;
-
-    struct blasfeo_dmat Y0x;
-    struct blasfeo_dmat Y0u;
-    struct blasfeo_dmat Y0f;
-
-    struct blasfeo_dmat Lx;
-    struct blasfeo_dmat Lxdot;
-    struct blasfeo_dmat Lz;
 
     // precomputed vectors for constant term in NSF
     struct blasfeo_dvec KK0;
     struct blasfeo_dvec YY0;
     struct blasfeo_dvec ZZ0;
+
+    // for algebraic sensitivities only;
+    struct blasfeo_dmat *Z0x;
+    struct blasfeo_dmat *Z0u;
+    struct blasfeo_dmat *Z0v;
+
+    struct blasfeo_dmat *Y0x;
+    struct blasfeo_dmat *Y0u;
+    struct blasfeo_dmat *Y0v;
+
+    struct blasfeo_dmat *K0x;
+    struct blasfeo_dmat *K0u;
+    struct blasfeo_dmat *K0v;
+
+    struct blasfeo_dmat *ELO_LU;
+    int *ipiv_ELO;
+    struct blasfeo_dmat *ELO_inv_ALO;
+
+    struct blasfeo_dmat *Lx;
+    struct blasfeo_dmat *Lxdot;
+    struct blasfeo_dmat *Lz;
 
 } sim_gnsf_memory;
 
@@ -253,35 +284,24 @@ int sim_gnsf_dims_calculate_size();
 void *sim_gnsf_dims_assign(void *config_, void *raw_memory);
 
 // get & set functions
-void sim_gnsf_set_nx(void *dims_, int nx);
-void sim_gnsf_set_nu(void *dims_, int nu);
-void sim_gnsf_set_nz(void *dims_, int nz);
-
-void sim_gnsf_get_nx(void *dims_, int *nx);
-void sim_gnsf_get_nu(void *dims_, int *nu);
-void sim_gnsf_get_nz(void *dims_, int *nz);
+void sim_gnsf_dims_set(void *config_, void *dims_, const char *field, const int *value);
+void sim_gnsf_dims_get(void *config_, void *dims_, const char *field, int* value);
 
 // opts
 int sim_gnsf_opts_calculate_size(void *config, void *dims);
 void *sim_gnsf_opts_assign(void *config, void *dims, void *raw_memory);
 void sim_gnsf_opts_initialize_default(void *config, void *dims, void *opts_);
 void sim_gnsf_opts_update(void *config_, void *dims, void *opts_);
+int sim_gnsf_opts_set(void *config_, void *opts_, const char *field, void *value);
 
 // model
 int sim_gnsf_model_calculate_size(void *config, void *dims_);
 void *sim_gnsf_model_assign(void *config, void *dims_, void *raw_memory);
-int sim_gnsf_model_set_function(void *model_, sim_function_t fun_type, void *fun);
-
-// import
-void sim_gnsf_import_matrices(sim_gnsf_dims *dims, gnsf_model *model,
-                              external_function_generic *get_matrices_fun);
-// void gnsf_import_precomputed(sim_gnsf_dims* dims, gnsf_model *model, casadi_function_t
-// But_KK_YY_ZZ_LO_fun); void gnsf_get_dims( sim_gnsf_dims* dims, casadi_function_t get_ints_fun);
-// // maybe remove
+int sim_gnsf_model_set(void *model_, const char *field, void *value);
 
 // precomputation
-void sim_gnsf_precompute(void *config, sim_gnsf_dims *dims, gnsf_model *model, sim_rk_opts *opts,
-                         void *mem_, void *work_, double T);
+int sim_gnsf_precompute(void *config_, sim_in *in, sim_out *out, void *opts_, void *mem_,
+                       void *work_);
 
 // workspace & memory
 int sim_gnsf_workspace_calculate_size(void *config, void *dims_, void *args);

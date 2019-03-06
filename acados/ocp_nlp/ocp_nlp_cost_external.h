@@ -50,6 +50,7 @@ void *ocp_nlp_cost_external_dims_assign(void *config, void *raw_memory);
 //
 void ocp_nlp_cost_external_dims_initialize(void *config, void *dims, int nx, int nu, int ny,
                                            int ns);
+void ocp_nlp_cost_external_dims_set(void *config_, void *dims_, const char *field, int* value);
 
 /************************************************
  * model
@@ -60,6 +61,7 @@ typedef struct
     external_function_generic *ext_cost;  // gradient and hessian
     struct blasfeo_dvec Z;
     struct blasfeo_dvec z;
+	double scaling;
 } ocp_nlp_cost_external_model;
 
 //
@@ -73,7 +75,7 @@ void *ocp_nlp_cost_external_model_assign(void *config, void *dims, void *raw_mem
 
 typedef struct
 {
-    int dummy;
+    int dummy; // struct can't be void
 } ocp_nlp_cost_external_opts;
 
 //
@@ -116,8 +118,7 @@ void ocp_nlp_cost_external_memory_set_ux_ptr(struct blasfeo_dvec *ux, void *memo
 
 typedef struct
 {
-    double *ext_cost_in;
-    double *ext_cost_out;
+    int dummy; // struct can't be void
 } ocp_nlp_cost_external_workspace;
 
 //

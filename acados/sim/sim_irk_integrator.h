@@ -37,6 +37,8 @@ typedef struct
 
 } sim_irk_dims;
 
+
+
 typedef struct
 {
     /* external functions */
@@ -50,6 +52,8 @@ typedef struct
     // hessian of implicit ode:
     external_function_generic *impl_ode_hess;
 } irk_model;
+
+
 
 typedef struct
 {
@@ -115,14 +119,11 @@ typedef struct
 
 } sim_irk_workspace;
 
-// get & set functions
-void sim_irk_set_nx(void *dims_, int nx);
-void sim_irk_set_nu(void *dims_, int nu);
-void sim_irk_set_nz(void *dims_, int nz);
 
-void sim_irk_get_nx(void *dims_, int *nx);
-void sim_irk_get_nu(void *dims_, int *nu);
-void sim_irk_get_nz(void *dims_, int *nz);
+
+// get & set functions
+void sim_irk_dims_set(void *config_, void *dims_, const char *field, const int *value);
+void sim_irk_dims_get(void *config_, void *dims_, const char *field, int* value);
 
 // dims
 int sim_irk_dims_calculate_size();
@@ -131,13 +132,14 @@ void *sim_irk_dims_assign(void *config_, void *raw_memory);
 // model
 int sim_irk_model_calculate_size(void *config, void *dims);
 void *sim_irk_model_assign(void *config, void *dims, void *raw_memory);
-int sim_irk_model_set_function(void *model_, sim_function_t fun_type, void *fun);
+int sim_irk_model_set(void *model, const char *field, void *value);
 
 // opts
 int sim_irk_opts_calculate_size(void *config, void *dims);
 void *sim_irk_opts_assign(void *config, void *dims, void *raw_memory);
 void sim_irk_opts_initialize_default(void *config, void *dims, void *opts_);
 void sim_irk_opts_update(void *config_, void *dims, void *opts_);
+int sim_irk_opts_set(void *config_, void *opts_, const char *field, void *value);
 
 // memory
 int sim_irk_memory_calculate_size(void *config, void *dims, void *opts_);

@@ -91,6 +91,9 @@ ocp_qp_solver_t qp_solver_enum(std::string const& inString)
     if (inString == "DENSE_OOQP") return FULL_CONDENSING_OOQP;
     if (inString == "SPARSE_OOQP") return PARTIAL_CONDENSING_OOQP;
 #endif
+#ifdef ACADOS_WITH_OSQP
+    if (inString == "SPARSE_OSQP") return PARTIAL_CONDENSING_OSQP;
+#endif
 
     return (ocp_qp_solver_t) -1;
 }
@@ -99,7 +102,7 @@ constraints_t constraints_enum(std::string const& inString)
 {
     if (inString == "BOX") return BOX;
     if (inString == "GENERAL") return GENERAL;
-    if (inString == "NONLINEAR+GENERAL") return GENERAL_NONLINEAR;
+    // if (inString == "NONLINEAR+GENERAL") return GENERAL_NONLINEAR;
 
     return (constraints_t) -1;
 }
@@ -115,9 +118,8 @@ ocp_nlp_dynamics_t nlp_dynamics_enum(std::string const& inString)
 sim_solver_t integrator_enum(std::string const& inString)
 {
     if (inString == "ERK") return ERK;
-    if (inString == "LIFTED_IRK") return LIFTED_IRK;
     if (inString == "IRK") return IRK;
-    if (inString == "NEW_LIFTED_IRK") return NEW_LIFTED_IRK;
+    if (inString == "LIFTED_IRK") return LIFTED_IRK;
 
     return (sim_solver_t) -1;
 }
@@ -134,7 +136,6 @@ ocp_nlp_cost_t cost_enum(std::string const& inString)
 
 static void select_dynamics_casadi(int N, int num_free_masses,
     external_function_casadi *forw_vde,
-    external_function_casadi *jac_ode,
     external_function_casadi *impl_ode_fun,
     external_function_casadi *impl_ode_fun_jac_x_xdot,
     external_function_casadi *impl_ode_fun_jac_x_xdot_u,
@@ -152,13 +153,6 @@ static void select_dynamics_casadi(int N, int num_free_masses,
                 forw_vde[ii].casadi_sparsity_out = &vde_chain_nm2_sparsity_out;
                 forw_vde[ii].casadi_n_in = &vde_chain_nm2_n_in;
                 forw_vde[ii].casadi_n_out = &vde_chain_nm2_n_out;
-
-                jac_ode[ii].casadi_fun = &jac_chain_nm2;
-                jac_ode[ii].casadi_work = &jac_chain_nm2_work;
-                jac_ode[ii].casadi_sparsity_in = &jac_chain_nm2_sparsity_in;
-                jac_ode[ii].casadi_sparsity_out = &jac_chain_nm2_sparsity_out;
-                jac_ode[ii].casadi_n_in = &jac_chain_nm2_n_in;
-                jac_ode[ii].casadi_n_out = &jac_chain_nm2_n_out;
 
                 impl_ode_fun[ii].casadi_fun = &casadi_impl_ode_fun_chain_nm2;
                 impl_ode_fun[ii].casadi_work = &casadi_impl_ode_fun_chain_nm2_work;
@@ -224,13 +218,6 @@ static void select_dynamics_casadi(int N, int num_free_masses,
                 forw_vde[ii].casadi_n_in = &vde_chain_nm3_n_in;
                 forw_vde[ii].casadi_n_out = &vde_chain_nm3_n_out;
 
-                jac_ode[ii].casadi_fun = &jac_chain_nm3;
-                jac_ode[ii].casadi_work = &jac_chain_nm3_work;
-                jac_ode[ii].casadi_sparsity_in = &jac_chain_nm3_sparsity_in;
-                jac_ode[ii].casadi_sparsity_out = &jac_chain_nm3_sparsity_out;
-                jac_ode[ii].casadi_n_in = &jac_chain_nm3_n_in;
-                jac_ode[ii].casadi_n_out = &jac_chain_nm3_n_out;
-
                 impl_ode_fun[ii].casadi_fun = &casadi_impl_ode_fun_chain_nm3;
                 impl_ode_fun[ii].casadi_work = &casadi_impl_ode_fun_chain_nm3_work;
                 impl_ode_fun[ii].casadi_sparsity_in = &casadi_impl_ode_fun_chain_nm3_sparsity_in;
@@ -295,13 +282,6 @@ static void select_dynamics_casadi(int N, int num_free_masses,
                 forw_vde[ii].casadi_n_in = &vde_chain_nm4_n_in;
                 forw_vde[ii].casadi_n_out = &vde_chain_nm4_n_out;
 
-                jac_ode[ii].casadi_fun = &jac_chain_nm4;
-                jac_ode[ii].casadi_work = &jac_chain_nm4_work;
-                jac_ode[ii].casadi_sparsity_in = &jac_chain_nm4_sparsity_in;
-                jac_ode[ii].casadi_sparsity_out = &jac_chain_nm4_sparsity_out;
-                jac_ode[ii].casadi_n_in = &jac_chain_nm4_n_in;
-                jac_ode[ii].casadi_n_out = &jac_chain_nm4_n_out;
-
                 impl_ode_fun[ii].casadi_fun = &casadi_impl_ode_fun_chain_nm4;
                 impl_ode_fun[ii].casadi_work = &casadi_impl_ode_fun_chain_nm4_work;
                 impl_ode_fun[ii].casadi_sparsity_in = &casadi_impl_ode_fun_chain_nm4_sparsity_in;
@@ -365,13 +345,6 @@ static void select_dynamics_casadi(int N, int num_free_masses,
                 forw_vde[ii].casadi_n_in = &vde_chain_nm5_n_in;
                 forw_vde[ii].casadi_n_out = &vde_chain_nm5_n_out;
 
-                jac_ode[ii].casadi_fun = &jac_chain_nm5;
-                jac_ode[ii].casadi_work = &jac_chain_nm5_work;
-                jac_ode[ii].casadi_sparsity_in = &jac_chain_nm5_sparsity_in;
-                jac_ode[ii].casadi_sparsity_out = &jac_chain_nm5_sparsity_out;
-                jac_ode[ii].casadi_n_in = &jac_chain_nm5_n_in;
-                jac_ode[ii].casadi_n_out = &jac_chain_nm5_n_out;
-
                 impl_ode_fun[ii].casadi_fun = &casadi_impl_ode_fun_chain_nm5;
                 impl_ode_fun[ii].casadi_work = &casadi_impl_ode_fun_chain_nm5_work;
                 impl_ode_fun[ii].casadi_sparsity_in = &casadi_impl_ode_fun_chain_nm5_sparsity_in;
@@ -434,13 +407,6 @@ static void select_dynamics_casadi(int N, int num_free_masses,
                 forw_vde[ii].casadi_n_in = &vde_chain_nm6_n_in;
                 forw_vde[ii].casadi_n_out = &vde_chain_nm6_n_out;
 
-                jac_ode[ii].casadi_fun = &jac_chain_nm6;
-                jac_ode[ii].casadi_work = &jac_chain_nm6_work;
-                jac_ode[ii].casadi_sparsity_in = &jac_chain_nm6_sparsity_in;
-                jac_ode[ii].casadi_sparsity_out = &jac_chain_nm6_sparsity_out;
-                jac_ode[ii].casadi_n_in = &jac_chain_nm6_n_in;
-                jac_ode[ii].casadi_n_out = &jac_chain_nm6_n_out;
-
                 impl_ode_fun[ii].casadi_fun = &casadi_impl_ode_fun_chain_nm6;
                 impl_ode_fun[ii].casadi_work = &casadi_impl_ode_fun_chain_nm6_work;
                 impl_ode_fun[ii].casadi_sparsity_in = &casadi_impl_ode_fun_chain_nm6_sparsity_in;
@@ -499,6 +465,94 @@ static void select_dynamics_casadi(int N, int num_free_masses,
             break;
     }
     return;
+}
+
+
+static void select_external_stage_cost_casadi(int indx, int N, int num_free_masses, external_function_casadi *external_cost)
+{
+	switch (num_free_masses)
+	{
+		case 1:
+			if (indx < N)
+			{
+				external_cost->casadi_fun = &chain_nm_2_external_cost;
+				external_cost->casadi_work = &chain_nm_2_external_cost_work;
+				external_cost->casadi_sparsity_in = &chain_nm_2_external_cost_sparsity_in;
+				external_cost->casadi_sparsity_out = &chain_nm_2_external_cost_sparsity_out;
+				external_cost->casadi_n_in = &chain_nm_2_external_cost_n_in;
+				external_cost->casadi_n_out = &chain_nm_2_external_cost_n_out;
+			}
+			else
+			{
+				printf("external cost not implemented for final stage");
+				exit(1);
+			}
+			break;
+		case 2:
+			if (indx < N)
+			{
+				external_cost->casadi_fun = &chain_nm_3_external_cost;
+				external_cost->casadi_work = &chain_nm_3_external_cost_work;
+				external_cost->casadi_sparsity_in = &chain_nm_3_external_cost_sparsity_in;
+				external_cost->casadi_sparsity_out = &chain_nm_3_external_cost_sparsity_out;
+				external_cost->casadi_n_in = &chain_nm_3_external_cost_n_in;
+				external_cost->casadi_n_out = &chain_nm_3_external_cost_n_out;
+			}
+			else
+			{
+				printf("external cost not implemented for final stage");
+				exit(1);
+			}
+			break;
+		case 3:
+			if (indx < N)
+			{
+				external_cost->casadi_fun = &chain_nm_4_external_cost;
+				external_cost->casadi_work = &chain_nm_4_external_cost_work;
+				external_cost->casadi_sparsity_in = &chain_nm_4_external_cost_sparsity_in;
+				external_cost->casadi_sparsity_out = &chain_nm_4_external_cost_sparsity_out;
+				external_cost->casadi_n_in = &chain_nm_4_external_cost_n_in;
+				external_cost->casadi_n_out = &chain_nm_4_external_cost_n_out;
+			}
+			else
+			{
+				printf("external cost not implemented for final stage");
+				exit(1);
+			}
+			break;
+		case 4:
+			if (indx < N)
+			{
+				external_cost->casadi_fun = &chain_nm_5_external_cost;
+				external_cost->casadi_work = &chain_nm_5_external_cost_work;
+				external_cost->casadi_sparsity_in = &chain_nm_5_external_cost_sparsity_in;
+				external_cost->casadi_sparsity_out = &chain_nm_5_external_cost_sparsity_out;
+				external_cost->casadi_n_in = &chain_nm_5_external_cost_n_in;
+				external_cost->casadi_n_out = &chain_nm_5_external_cost_n_out;
+			}
+			else
+			{
+				printf("external cost not implemented for final stage");
+				exit(1);
+			}
+			break;
+		case 5:
+			if (indx < N)
+			{
+				external_cost->casadi_fun = &chain_nm_6_external_cost;
+				external_cost->casadi_work = &chain_nm_6_external_cost_work;
+				external_cost->casadi_sparsity_in = &chain_nm_6_external_cost_sparsity_in;
+				external_cost->casadi_sparsity_out = &chain_nm_6_external_cost_sparsity_out;
+				external_cost->casadi_n_in = &chain_nm_6_external_cost_n_in;
+				external_cost->casadi_n_out = &chain_nm_6_external_cost_n_out;
+			}
+			else
+			{
+				printf("external cost not implemented for final stage");
+				exit(1);
+			}
+			break;
+	}
 }
 
 
@@ -682,396 +736,8 @@ void read_final_state(const int nx, const int num_free_masses, double *xN)
 }
 
 
-
-// hand-generated external function for externally provided hessian and gradient
-void ext_cost_nm2(void *fun,
-    ext_fun_arg_t *type_in,
-    void **in,
-    ext_fun_arg_t *type_out,
-    void **out)
-{
-
-    int ii;
-
-    int nu = 3;
-    int nx = 6;
-
-    int nv = nu+nx;
-
-    // ref
-    double *ref = (double *)calloc(nx+nu, sizeof(double));
-    for (ii = 0; ii < nu; ii++)
-        ref[ii] = 0.0;
-    for (ii = 0; ii < nx; ii++)
-        ref[nu+ii] = xN_nm2[ii];
-
-    // Hessian
-    double *hess = (double *)out[1];
-    for (ii = 0; ii < nv*nv; ii++)
-        hess[ii] = 0.0;
-    for (ii = 0; ii < nu; ii++)
-        hess[ii*(nv+1)] = 1.0;
-    for (; ii < nu+nx; ii++)
-        hess[ii*(nv+1)] = 1e-2;
-
-    // gradient
-    double *ux = (double *)in[0];
-    double *grad = (double *)out[0];
-    for (ii = 0; ii < nv; ii++)
-        grad[ii] = 0.0;
-    for (ii = 0; ii < nv; ii++)
-        grad[ii] = hess[ii*(nv+1)] * (ux[ii] - ref[ii]);
-
-    free(ref);
-    return;
-
-}
-
-void ext_cost_nm3(void *fun,
-    ext_fun_arg_t *type_in,
-    void **in,
-    ext_fun_arg_t *type_out,
-    void **out)
-{
-
-    int ii;
-
-    int nu = 3;
-    int nx = 12;
-
-    int nv = nu+nx;
-
-    // ref
-    double *ref = (double *)calloc(nx+nu, sizeof(double));
-    for (ii = 0; ii < nu; ii++)
-        ref[ii] = 0.0;
-    for (ii = 0; ii < nx; ii++)
-        ref[nu+ii] = xN_nm3[ii];
-
-    // Hessian
-    double *hess = (double *)out[1];
-    for (ii = 0; ii < nv*nv; ii++)
-        hess[ii] = 0.0;
-    for (ii = 0; ii < nu; ii++)
-        hess[ii*(nv+1)] = 1.0;
-    for (; ii < nu+nx; ii++)
-        hess[ii*(nv+1)] = 1e-2;
-
-    // gradient
-    double *ux = (double *)in[0];
-    double *grad = (double *)out[0];
-    for (ii = 0; ii < nv; ii++)
-        grad[ii] = 0.0;
-    for (ii = 0; ii < nv; ii++)
-        grad[ii] = hess[ii*(nv+1)] * (ux[ii] - ref[ii]);
-
-    free(ref);
-    return;
-
-}
-
-void ext_cost_nm4(void *fun,
-    ext_fun_arg_t *type_in,
-    void **in,
-    ext_fun_arg_t *type_out,
-    void **out)
-{
-
-    int ii;
-
-    int nu = 3;
-    int nx = 18;
-
-    int nv = nu+nx;
-
-    // ref
-    double *ref = (double *)calloc(nx+nu, sizeof(double));
-    for (ii = 0; ii < nu; ii++)
-        ref[ii] = 0.0;
-    for (ii = 0; ii < nx; ii++)
-        ref[nu+ii] = xN_nm4[ii];
-
-    // Hessian
-    double *hess = (double *)out[1];
-    for (ii = 0; ii < nv*nv; ii++)
-        hess[ii] = 0.0;
-    for (ii = 0; ii < nu; ii++)
-        hess[ii*(nv+1)] = 1.0;
-    for (; ii < nu+nx; ii++)
-        hess[ii*(nv+1)] = 1e-2;
-
-    // gradient
-    double *ux = (double *)in[0];
-    double *grad = (double *)out[0];
-    for (ii = 0; ii < nv; ii++)
-        grad[ii] = 0.0;
-    for (ii = 0; ii < nv; ii++)
-        grad[ii] = hess[ii*(nv+1)] * (ux[ii] - ref[ii]);
-
-    free(ref);
-    return;
-
-}
-
-void ext_cost_nm5(void *fun,
-    ext_fun_arg_t *type_in,
-    void **in,
-    ext_fun_arg_t *type_out,
-    void **out)
-{
-
-    int ii;
-
-    int nu = 3;
-    int nx = 24;
-
-    int nv = nu+nx;
-
-    // ref
-    double *ref = (double *)calloc(nx+nu, sizeof(double));
-    for (ii = 0; ii < nu; ii++)
-        ref[ii] = 0.0;
-    for (ii = 0; ii < nx; ii++)
-        ref[nu+ii] = xN_nm5[ii];
-
-    // Hessian
-    double *hess = (double *)out[1];
-    for (ii = 0; ii < nv*nv; ii++)
-        hess[ii] = 0.0;
-    for (ii = 0; ii < nu; ii++)
-        hess[ii*(nv+1)] = 1.0;
-    for (; ii < nu+nx; ii++)
-        hess[ii*(nv+1)] = 1e-2;
-
-    // gradient
-    double *ux = (double *)in[0];
-    double *grad = (double *)out[0];
-    for (ii = 0; ii < nv; ii++)
-        grad[ii] = 0.0;
-    for (ii = 0; ii < nv; ii++)
-        grad[ii] = hess[ii*(nv+1)] * (ux[ii] - ref[ii]);
-
-    free(ref);
-    return;
-
-}
-
-void ext_cost_nm6(void *fun,
-    ext_fun_arg_t *type_in,
-    void **in,
-    ext_fun_arg_t *type_out,
-    void **out)
-{
-
-    int ii;
-
-    int nu = 3;
-    int nx = 30;
-
-    int nv = nu+nx;
-
-    // ref
-    double *ref = (double *)calloc(nx+nu, sizeof(double));
-    for (ii = 0; ii < nu; ii++)
-        ref[ii] = 0.0;
-    for (ii = 0; ii < nx; ii++)
-        ref[nu+ii] = xN_nm6[ii];
-
-    // Hessian
-    double *hess = (double *)out[1];
-    for (ii = 0; ii < nv*nv; ii++)
-        hess[ii] = 0.0;
-    for (ii = 0; ii < nu; ii++)
-        hess[ii*(nv+1)] = 1.0;
-    for (; ii < nu+nx; ii++)
-        hess[ii*(nv+1)] = 1e-2;
-
-    // gradient
-    double *ux = (double *)in[0];
-    double *grad = (double *)out[0];
-    for (ii = 0; ii < nv; ii++)
-        grad[ii] = 0.0;
-    for (ii = 0; ii < nv; ii++)
-        grad[ii] = hess[ii*(nv+1)] * (ux[ii] - ref[ii]);
-
-    free(ref);
-    return;
-
-}
-
-
-
 // hand-wirtten box constraints on states as nonlinear constraints
-void nonlin_constr_nm2(void *evaluate,
-    ext_fun_arg_t *type_in,
-    void **in,
-    ext_fun_arg_t *type_out,
-    void **out)
-{
-
-    int ii;
-
-    int nu = 3;
-    int nx = 6;
-
-    int nh = nx;
-
-    // fun
-    struct blasfeo_dvec_args *fun_args = (struct blasfeo_dvec_args *)out[0];
-    struct blasfeo_dvec *fun = fun_args->x;
-    int xi = fun_args->xi;
-    struct blasfeo_dvec *ux = (struct blasfeo_dvec *)in[0];
-    blasfeo_dveccp(nx, ux, nu, fun, xi);
-
-    // jacobian
-    struct blasfeo_dmat_args *jac_args = (struct blasfeo_dmat_args *)out[1];
-    struct blasfeo_dmat *jac = jac_args->A;
-    int ai = jac_args->ai;
-    int aj = jac_args->aj;
-    blasfeo_dgese(nu+nx, nh, 0.0, jac, ai, aj);
-    for (ii = 0; ii < nh; ii++)
-        BLASFEO_DMATEL(jac, ai+nu+ii, aj+ii) = 1.0;
-
-    return;
-
-}
-
-void nonlin_constr_nm3(void *evaluate,
-    ext_fun_arg_t *type_in,
-    void **in,
-    ext_fun_arg_t *type_out,
-    void **out)
-{
-
-    int ii;
-
-    int nu = 3;
-    int nx = 12;
-
-    int nh = nx;
-
-    // fun
-    struct blasfeo_dvec_args *fun_args = (struct blasfeo_dvec_args *)out[0];
-    struct blasfeo_dvec *fun = fun_args->x;
-    int xi = fun_args->xi;
-    struct blasfeo_dvec *ux = (struct blasfeo_dvec *)in[0];
-    blasfeo_dveccp(nx, ux, nu, fun, xi);
-
-    // jacobian
-    struct blasfeo_dmat_args *jac_args = (struct blasfeo_dmat_args *)out[1];
-    struct blasfeo_dmat *jac = jac_args->A;
-    int ai = jac_args->ai;
-    int aj = jac_args->aj;
-    blasfeo_dgese(nu+nx, nh, 0.0, jac, ai, aj);
-    for (ii = 0; ii < nh; ii++)
-        BLASFEO_DMATEL(jac, ai+nu+ii, aj+ii) = 1.0;
-
-    return;
-
-}
-
-void nonlin_constr_nm4(void *evaluate,
-    ext_fun_arg_t *type_in,
-    void **in,
-    ext_fun_arg_t *type_out,
-    void **out)
-{
-
-    int ii;
-
-    int nu = 3;
-    int nx = 18;
-
-    int nh = nx;
-
-    // fun
-    struct blasfeo_dvec_args *fun_args = (struct blasfeo_dvec_args *)out[0];
-    struct blasfeo_dvec *fun = fun_args->x;
-    int xi = fun_args->xi;
-    struct blasfeo_dvec *ux = (struct blasfeo_dvec *)in[0];
-    blasfeo_dveccp(nx, ux, nu, fun, xi);
-
-    // jacobian
-    struct blasfeo_dmat_args *jac_args = (struct blasfeo_dmat_args *)out[1];
-    struct blasfeo_dmat *jac = jac_args->A;
-    int ai = jac_args->ai;
-    int aj = jac_args->aj;
-    blasfeo_dgese(nu+nx, nh, 0.0, jac, ai, aj);
-    for (ii = 0; ii < nh; ii++)
-        BLASFEO_DMATEL(jac, ai+nu+ii, aj+ii) = 1.0;
-
-    return;
-
-}
-
-void nonlin_constr_nm5(void *evaluate,
-    ext_fun_arg_t *type_in,
-    void **in,
-    ext_fun_arg_t *type_out,
-    void **out)
-{
-
-    int ii;
-
-    int nu = 3;
-    int nx = 24;
-
-    int nh = nx;
-
-    // fun
-    struct blasfeo_dvec_args *fun_args = (struct blasfeo_dvec_args *)out[0];
-    struct blasfeo_dvec *fun = fun_args->x;
-    int xi = fun_args->xi;
-    struct blasfeo_dvec *ux = (struct blasfeo_dvec *)in[0];
-    blasfeo_dveccp(nx, ux, nu, fun, xi);
-
-    // jacobian
-    struct blasfeo_dmat_args *jac_args = (struct blasfeo_dmat_args *)out[1];
-    struct blasfeo_dmat *jac = jac_args->A;
-    int ai = jac_args->ai;
-    int aj = jac_args->aj;
-    blasfeo_dgese(nu+nx, nh, 0.0, jac, ai, aj);
-    for (ii = 0; ii < nh; ii++)
-        BLASFEO_DMATEL(jac, ai+nu+ii, aj+ii) = 1.0;
-
-    return;
-
-}
-
-void nonlin_constr_nm6(void *evaluate,
-    ext_fun_arg_t *type_in,
-    void **in,
-    ext_fun_arg_t *type_out,
-    void **out)
-{
-
-    int ii;
-
-    int nu = 3;
-    int nx = 30;
-
-    int nh = nx;
-
-    // fun
-    struct blasfeo_dvec_args *fun_args = (struct blasfeo_dvec_args *)out[0];
-    struct blasfeo_dvec *fun = fun_args->x;
-    int xi = fun_args->xi;
-    struct blasfeo_dvec *ux = (struct blasfeo_dvec *)in[0];
-    blasfeo_dveccp(nx, ux, nu, fun, xi);
-
-    // jacobian
-    struct blasfeo_dmat_args *jac_args = (struct blasfeo_dmat_args *)out[1];
-    struct blasfeo_dmat *jac = jac_args->A;
-    int ai = jac_args->ai;
-    int aj = jac_args->aj;
-    blasfeo_dgese(nu+nx, nh, 0.0, jac, ai, aj);
-    for (ii = 0; ii < nh; ii++)
-        BLASFEO_DMATEL(jac, ai+nu+ii, aj+ii) = 1.0;
-
-    return;
-
-}
-
+// BROKEN & removed since external function convention changed, input is x, u now.
 
 
 void setup_and_solve_nlp(int NN,
@@ -1238,7 +904,7 @@ void setup_and_solve_nlp(int NN,
     * plan + config
     ************************************************/
 
-    ocp_nlp_solver_plan *plan = ocp_nlp_plan_create(NN);
+    ocp_nlp_plan *plan = ocp_nlp_plan_create(NN);
 
     // TODO(dimitris): not necessarily GN, depends on cost module
     plan->nlp_solver = SQP;
@@ -1338,13 +1004,6 @@ void setup_and_solve_nlp(int NN,
                         plan->sim_solver_plan[i].sim_solver = LIFTED_IRK;
                 }
                 break;
-            case NEW_LIFTED_IRK:
-                for (int i = 0; i < NN; i++)
-                {
-                    if (plan->nlp_dynamics[i] == CONTINUOUS_MODEL)
-                        plan->sim_solver_plan[i].sim_solver = NEW_LIFTED_IRK;
-                }
-                break;
             default:
                 for (int i = 0; i < NN; i++)
                 {
@@ -1355,9 +1014,9 @@ void setup_and_solve_nlp(int NN,
                         else if (i%4 == 1)
                             plan->sim_solver_plan[i].sim_solver = ERK;
                         else if (i%4 == 2)
-                            plan->sim_solver_plan[i].sim_solver = LIFTED_IRK;
+                            plan->sim_solver_plan[i].sim_solver = IRK;
                         else if (i%4 == 3)
-                            plan->sim_solver_plan[i].sim_solver = NEW_LIFTED_IRK;
+                            plan->sim_solver_plan[i].sim_solver = LIFTED_IRK;
                     }
                 }
                 break;
@@ -1374,14 +1033,31 @@ void setup_and_solve_nlp(int NN,
 
     // TODO(dimitris): fix minor memory leak
     // here
-    ocp_nlp_solver_config *config = ocp_nlp_config_create(*plan, NN);
+    ocp_nlp_config *config = ocp_nlp_config_create(*plan);
 
     /************************************************
     * ocp_nlp_dims
     ************************************************/
 
     ocp_nlp_dims *dims = ocp_nlp_dims_create(config);
-    ocp_nlp_dims_initialize(config, nx, nu, ny, nbx, nbu, ng, nh, nq, ns, nz, dims);
+
+    ocp_nlp_dims_set_opt_vars(config, dims, "nx", nx);
+    ocp_nlp_dims_set_opt_vars(config, dims, "nu", nu);
+    ocp_nlp_dims_set_opt_vars(config, dims, "nz", nz);
+    ocp_nlp_dims_set_opt_vars(config, dims, "ns", ns);
+
+    for (int i = 0; i <= NN; i++)
+    {
+        if (plan->nlp_cost[i] != EXTERNALLY_PROVIDED)
+        {
+            ocp_nlp_dims_set_cost(config, dims, i, "ny", &ny[i]);
+        }
+        ocp_nlp_dims_set_constraints(config, dims, i, "nbx", &nbx[i]);
+        ocp_nlp_dims_set_constraints(config, dims, i, "nbu", &nbu[i]);
+        ocp_nlp_dims_set_constraints(config, dims, i, "ng", &ng[i]);
+        ocp_nlp_dims_set_constraints(config, dims, i, "nh", &nh[i]);
+        // ocp_nlp_dims_set_constraints(config, dims, i, "np", &nq[i]);
+    }
 
     /************************************************
     * dynamics
@@ -1389,8 +1065,6 @@ void setup_and_solve_nlp(int NN,
 
     // explicit
     external_function_casadi *expl_vde_for = (external_function_casadi *)
-                                              malloc(NN*sizeof(external_function_casadi));
-    external_function_casadi *expl_ode_jac = (external_function_casadi *)
                                               malloc(NN*sizeof(external_function_casadi));
 
     // implicit
@@ -1409,14 +1083,11 @@ void setup_and_solve_nlp(int NN,
     if (NMF < 4)
         erk4_casadi = (external_function_casadi *)malloc(NN*sizeof(external_function_casadi));
 
-    select_dynamics_casadi(NN, NMF, expl_vde_for, expl_ode_jac, impl_ode_fun,
+    select_dynamics_casadi(NN, NMF, expl_vde_for, impl_ode_fun,
             impl_ode_fun_jac_x_xdot, impl_ode_fun_jac_x_xdot_u, impl_ode_jac_x_xdot_u, erk4_casadi);
 
     // forw_vde
     external_function_casadi_create_array(NN, expl_vde_for);
-    // jac_ode
-    external_function_casadi_create_array(NN, expl_ode_jac);
-
     // impl_ode
     external_function_casadi_create_array(NN, impl_ode_fun);
     //
@@ -1435,8 +1106,8 @@ void setup_and_solve_nlp(int NN,
 
     external_function_casadi *ls_cost_jac_casadi = (external_function_casadi *)
                                                     malloc((NN+1)*sizeof(external_function_casadi));
-    external_function_generic *ext_cost_generic = (external_function_generic *)
-                                                   malloc(NN*sizeof(external_function_casadi));
+	external_function_casadi *external_cost = (external_function_casadi *)
+                                              malloc(NN*sizeof(external_function_casadi));
 
     for (int i = 0; i <= NN; i++)
     {
@@ -1451,32 +1122,14 @@ void setup_and_solve_nlp(int NN,
                 external_function_casadi_create(&ls_cost_jac_casadi[i]);
                 break;
 
-            case EXTERNALLY_PROVIDED:
-                // TODO(dimitris): move
-                // inside
-                // select_ls_stage_cost_jac_casadi?
-                switch (NMF)
-                {
-                    case 1:
-                        ext_cost_generic[i].evaluate = &ext_cost_nm2;
-                        break;
-                    case 2:
-                        ext_cost_generic[i].evaluate = &ext_cost_nm3;
-                        break;
-                    case 3:
-                        ext_cost_generic[i].evaluate = &ext_cost_nm4;
-                        break;
-                    case 4:
-                        ext_cost_generic[i].evaluate = &ext_cost_nm5;
-                        break;
-                    case 5:
-                        ext_cost_generic[i].evaluate = &ext_cost_nm6;
-                        break;
-                    default:
-                        printf("\next cost not implemented for this numer of masses\n\n");
-                        exit(1);
-                }
-                break;
+ 			case EXTERNALLY_PROVIDED:
+				select_external_stage_cost_casadi(i, NN, NMF, &external_cost[i]);
+				external_function_casadi_create(&external_cost[i]);
+				break;
+
+			default:
+                printf("\ncost not correctly specified\n\n");
+                exit(1);
         }
     }
 
@@ -1485,30 +1138,30 @@ void setup_and_solve_nlp(int NN,
     ************************************************/
     external_function_generic nonlin_constr_generic;
 
-    if (con_type == GENERAL_NONLINEAR)
-    {
-        switch (NMF)
-        {
-            case 1:
-                nonlin_constr_generic.evaluate = &nonlin_constr_nm2;
-                break;
-            case 2:
-                nonlin_constr_generic.evaluate = &nonlin_constr_nm3;
-                break;
-            case 3:
-                nonlin_constr_generic.evaluate = &nonlin_constr_nm4;
-                break;
-            case 4:
-                nonlin_constr_generic.evaluate = &nonlin_constr_nm5;
-                break;
-            case 5:
-                nonlin_constr_generic.evaluate = &nonlin_constr_nm6;
-                break;
-            default:
-                printf("\nnonlin constr not implemented for this number of masses\n\n");
-                exit(1);
-        }
-    }
+    // if (con_type == GENERAL_NONLINEAR)
+    // {
+    //     switch (NMF)
+    //     {
+    //         case 1:
+    //             nonlin_constr_generic.evaluate = &nonlin_constr_nm2;
+    //             break;
+    //         case 2:
+    //             nonlin_constr_generic.evaluate = &nonlin_constr_nm3;
+    //             break;
+    //         case 3:
+    //             nonlin_constr_generic.evaluate = &nonlin_constr_nm4;
+    //             break;
+    //         case 4:
+    //             nonlin_constr_generic.evaluate = &nonlin_constr_nm5;
+    //             break;
+    //         case 5:
+    //             nonlin_constr_generic.evaluate = &nonlin_constr_nm6;
+    //             break;
+    //         default:
+    //             printf("\nnonlin constr not implemented for this number of masses\n\n");
+    //             exit(1);
+    //     }
+    // }
 
 
     /************************************************
@@ -1558,8 +1211,8 @@ void setup_and_solve_nlp(int NN,
 
                 stage_cost_nls = (ocp_nlp_cost_nls_model *) nlp_in->cost[i];
 
-                // nls_jac
-                stage_cost_nls->nls_jac = (external_function_generic *) &ls_cost_jac_casadi[i];
+                // nls_res_jac
+                stage_cost_nls->nls_res_jac = (external_function_generic *) &ls_cost_jac_casadi[i];
 
                 // W
                 blasfeo_dgese(ny[i], ny[i], 0.0, &stage_cost_nls->W, 0, 0);
@@ -1575,10 +1228,14 @@ void setup_and_solve_nlp(int NN,
 
             case EXTERNALLY_PROVIDED:
 
-                stage_cost_external = (ocp_nlp_cost_external_model *) nlp_in->cost[i];
-                stage_cost_external->ext_cost = &ext_cost_generic[i];
+				ocp_nlp_cost_model_set(config, dims, nlp_in, i, "ext_cost_jac_hes", &external_cost[i]);
+
                 assert(i < NN && "externally provided cost not implemented for last stage!");
                 break;
+
+            default:
+                printf("\ncost not correctly specified\n\n");
+                exit(1);
         }
     }
 
@@ -1599,40 +1256,28 @@ void setup_and_solve_nlp(int NN,
 
                 if (plan->sim_solver_plan[i].sim_solver == ERK)
                 {
-                    set_fun_status = nlp_set_model_in_stage(config, nlp_in, i,
+                    set_fun_status = ocp_nlp_dynamics_model_set(config, dims, nlp_in, i,
                                                             "expl_vde_for", &expl_vde_for[i]);
-                    if (set_fun_status != 0) exit(1);
-                    set_fun_status = nlp_set_model_in_stage(config, nlp_in, i,
-                                                            "expl_ode_jac", &expl_ode_jac[i]);
-                    if (set_fun_status != 0) exit(1);
-                }
-                else if (plan->sim_solver_plan[i].sim_solver == LIFTED_IRK)
-                {
-                    set_fun_status = nlp_set_model_in_stage(config, nlp_in, i,
-                                                            "expl_vde_for", &expl_vde_for[i]);
-                    if (set_fun_status != 0) exit(1);
-                    set_fun_status = nlp_set_model_in_stage(config, nlp_in, i,
-                                                            "expl_ode_jac", &expl_ode_jac[i]);
                     if (set_fun_status != 0) exit(1);
                 }
                 else if (plan->sim_solver_plan[i].sim_solver == IRK)
                 {
-                    set_fun_status = nlp_set_model_in_stage(config, nlp_in, i,
+                    set_fun_status = ocp_nlp_dynamics_model_set(config, dims, nlp_in, i,
                                                             "impl_ode_fun", &impl_ode_fun[i]);
                     if (set_fun_status != 0) exit(1);
-                    set_fun_status = nlp_set_model_in_stage(config, nlp_in, i,
+                    set_fun_status = ocp_nlp_dynamics_model_set(config, dims, nlp_in, i,
                                             "impl_ode_fun_jac_x_xdot", &impl_ode_fun_jac_x_xdot[i]);
                     if (set_fun_status != 0) exit(1);
-                    set_fun_status = nlp_set_model_in_stage(config, nlp_in, i,
+                    set_fun_status = ocp_nlp_dynamics_model_set(config, dims, nlp_in, i,
                                                 "impl_ode_jac_x_xdot_u", &impl_ode_jac_x_xdot_u[i]);
                     if (set_fun_status != 0) exit(1);
                 }
-                else if (plan->sim_solver_plan[i].sim_solver == NEW_LIFTED_IRK)
+                else if (plan->sim_solver_plan[i].sim_solver == LIFTED_IRK)
                 {
-                    set_fun_status = nlp_set_model_in_stage(config, nlp_in, i,
+                    set_fun_status = ocp_nlp_dynamics_model_set(config, dims, nlp_in, i,
                                                             "impl_ode_fun", &impl_ode_fun[i]);
                     if (set_fun_status != 0) exit(1);
-                    set_fun_status = nlp_set_model_in_stage(config, nlp_in, i,
+                    set_fun_status = ocp_nlp_dynamics_model_set(config, dims, nlp_in, i,
                                         "impl_ode_fun_jac_x_xdot_u", &impl_ode_fun_jac_x_xdot_u[i]);
                     if (set_fun_status != 0) exit(1);
                 }
@@ -1647,6 +1292,10 @@ void setup_and_solve_nlp(int NN,
                     dynamics->discrete_model = (external_function_generic *) &erk4_casadi[i];
                 }
                 break;
+
+            default:
+                printf("\ndynamics not correctly specified\n\n");
+                exit(1);
         }
     }
 
@@ -1687,7 +1336,7 @@ void setup_and_solve_nlp(int NN,
 
             ocp_nlp_constraints_bgh_model **nl_constr = (ocp_nlp_constraints_bgh_model **)
                                                     nlp_in->constraints;
-            nl_constr[0]->h = &nonlin_constr_generic;
+            nl_constr[0]->nl_constr_h_fun_jac = &nonlin_constr_generic;
 
             blasfeo_pack_dvec(ng[0]+nh[0], lb0, &constraints[0]->d, nb[0]);
             blasfeo_pack_dvec(ng[0]+nh[0], ub0, &constraints[0]->d, 2*nb[0]+ng[0]+nh[0]);
@@ -1718,29 +1367,30 @@ void setup_and_solve_nlp(int NN,
         {
             ocp_nlp_dynamics_cont_opts *dynamics_stage_opts = (ocp_nlp_dynamics_cont_opts *)
                                                               sqp_opts->dynamics[i];
-            sim_rk_opts *sim_opts = (sim_rk_opts *)dynamics_stage_opts->sim_solver;
+            sim_opts *sim_opts_ = (sim_opts *) dynamics_stage_opts->sim_solver;
 
             if (plan->sim_solver_plan[i].sim_solver == ERK)
             {
-                sim_opts->ns = 4;
-            }
-            else if (plan->sim_solver_plan[i].sim_solver == LIFTED_IRK)
-            {
-                sim_opts->ns = 2;
+                sim_opts_->ns = 4;
             }
             else if (plan->sim_solver_plan[i].sim_solver == IRK)
             {
-                sim_opts->ns = 2;
-                sim_opts->jac_reuse = true;
+                sim_opts_->ns = 2;
+                sim_opts_->jac_reuse = true;
             }
         }
     }
+    int maxIter = MAX_SQP_ITERS;
+    double min_res_g = 1e-6;
+    double min_res_b = 1e-6;
+    double min_res_d = 1e-6;
+    double min_res_m = 1e-6;
 
-    sqp_opts->maxIter = MAX_SQP_ITERS;
-    sqp_opts->min_res_g = 1e-6;
-    sqp_opts->min_res_b = 1e-6;
-    sqp_opts->min_res_d = 1e-6;
-    sqp_opts->min_res_m = 1e-6;
+    ocp_nlp_opts_set(config, nlp_opts, "maxIter", &maxIter);
+    ocp_nlp_opts_set(config, nlp_opts, "min_res_g", &min_res_g);
+    ocp_nlp_opts_set(config, nlp_opts, "min_res_b", &min_res_b);
+    ocp_nlp_opts_set(config, nlp_opts, "min_res_d", &min_res_d);
+    ocp_nlp_opts_set(config, nlp_opts, "min_res_m", &min_res_m);
 
     /************************************************
     * ocp_nlp out
@@ -1748,7 +1398,7 @@ void setup_and_solve_nlp(int NN,
 
     ocp_nlp_out *nlp_out = ocp_nlp_out_create(config, dims);
 
-    ocp_nlp_solver *solver = ocp_nlp_create(config, dims, nlp_opts);
+    ocp_nlp_solver *solver = ocp_nlp_solver_create(config, dims, nlp_opts);
 
     /************************************************
     * sqp solve
@@ -1787,9 +1437,7 @@ void setup_and_solve_nlp(int NN,
 
     // TODO(dimitris): VALGRIND!
     external_function_casadi_free(expl_vde_for);
-    external_function_casadi_free(expl_ode_jac);
     free(expl_vde_for);
-    free(expl_ode_jac);
 
     external_function_casadi_free(impl_ode_fun);
     external_function_casadi_free(impl_ode_fun_jac_x_xdot);
@@ -1807,12 +1455,12 @@ void setup_and_solve_nlp(int NN,
         free(erk4_casadi);
     }
 
-    free(nlp_opts);
-    free(nlp_in);
-    free(nlp_out);
-    free(solver);
-    free(dims);
-    free(config);
+    ocp_nlp_opts_destroy(nlp_opts);
+    ocp_nlp_in_destroy(nlp_in);
+    ocp_nlp_out_destroy(nlp_out);
+    ocp_nlp_solver_destroy(solver);
+    ocp_nlp_dims_destroy(dims);
+    ocp_nlp_config_destroy(config);
 
     free(xref);
     free(diag_cost_x);
@@ -1826,20 +1474,22 @@ void setup_and_solve_nlp(int NN,
     free(idxb1);
     free(idxbN);
 
-    for (int i = 0; i <= NN; i++)
-    {
-        switch (plan->nlp_cost[i])
-        {
-            case NONLINEAR_LS:
-                external_function_casadi_free(&ls_cost_jac_casadi[i]);
-                break;
-            default:
-                break;
-        }
-    }
+	for (int i = 0; i <= NN; i++)
+	{
+		switch (plan->nlp_cost[i])
+		{
+			case NONLINEAR_LS:
+				external_function_casadi_free(&ls_cost_jac_casadi[i]);
+				break;
+			case EXTERNALLY_PROVIDED:
+				external_function_casadi_free(&external_cost[i]);
+			default:
+				break;
+		}
+	}
 
     free(ls_cost_jac_casadi);
-    free(ext_cost_generic);
+	free(external_cost);
 
     free(plan);
 
@@ -1880,6 +1530,9 @@ TEST_CASE("chain example", "[NLP solver]")
                                             // , "DENSE_OOQP"
                                             // , "SPARSE_OOQP"
 #endif
+#ifdef ACADOS_WITH_OSQP
+                                            , "SPARSE_OSQP"
+#endif
 #ifdef ACADOS_WITH_QORE
                                             , "DENSE_QORE"
                                             };
@@ -1891,7 +1544,7 @@ TEST_CASE("chain example", "[NLP solver]")
     {
         horizon_lenghts = {20};
         num_masses = {2, 3, 4};
-        cons = {"BOX", "GENERAL", "NONLINEAR+GENERAL"};
+        cons = {"BOX", "GENERAL"};  //, "NONLINEAR+GENERAL"};
         models = {"DISCRETE", "CONTINUOUS", "MIXED"};
         integrators = {"MIXED"};
         costs = {"MIXED"};
@@ -1900,7 +1553,8 @@ TEST_CASE("chain example", "[NLP solver]")
     {
         horizon_lenghts = {20, 25};
         num_masses = {2, 3, 4};
-        cons = {"NONLINEAR+GENERAL"};
+        cons = {"BOX", "GENERAL"};
+        // cons = {"NONLINEAR+GENERAL"};
         models = {"DISCRETE", "CONTINUOUS", "MIXED"};
         integrators = {"MIXED"};
         costs = {"MIXED"};

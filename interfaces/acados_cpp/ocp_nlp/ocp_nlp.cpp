@@ -10,12 +10,13 @@
 #include "acados/ocp_nlp/ocp_nlp_cost_nls.h"
 #include "acados/ocp_nlp/ocp_nlp_dynamics_cont.h"
 #include "acados/ocp_nlp/ocp_nlp_sqp.h"
+#include "acados/ocp_nlp/ocp_nlp_sqp_rti.h"
 
 #include "acados_cpp/code_generator.hpp"
 #include "acados_cpp/ocp_bounds.hpp"
 #include "acados_cpp/ocp_dimensions.hpp"
 #include "acados_cpp/utils.hpp"
-#include "acados_cpp/ocp_nlp/function_generation.hpp"
+#include "acados_cpp/function_generation.hpp"
 
 #include "blasfeo/include/blasfeo_d_aux.h"
 
@@ -46,11 +47,12 @@ ocp_nlp::ocp_nlp(std::vector<int> nx, std::vector<int> nu, std::vector<int> ng, 
     d_["nh"] = nh;
     d_["ns"] = ns;
     d_["ny"] = vector<int>(N+1);
+    // TODO(oj): initialize?!
     d_["nz"] = vector<int>(N+1);
 
-    int config_size = ocp_nlp_solver_config_calculate_size(N);
+    int config_size = ocp_nlp_config_calculate_size(N);
     void *raw_memory = malloc(config_size);
-    config_.reset(ocp_nlp_solver_config_assign(N, raw_memory));
+    config_.reset(ocp_nlp_config_assign(N, raw_memory));
 
     for (int i = 0; i <= N; ++i)
         ocp_nlp_constraints_bgh_config_initialize_default(config_->constraints[i]);
@@ -154,6 +156,11 @@ void ocp_nlp::initialize_solver(std::string solver_name, std::map<std::string, o
         ocp_nlp_sqp_config_initialize_default(config_.get());
         plan_->nlp_solver = SQP;
     }
+    else if (solver_name == "rti")
+    {
+        ocp_nlp_sqp_rti_config_initialize_default(config_.get());
+        plan_->nlp_solver = SQP_RTI;
+    }
     else
     {
         throw std::invalid_argument("Solver name '" + solver_name + "' not known.");
@@ -192,11 +199,22 @@ void ocp_nlp::initialize_solver(std::string solver_name, std::map<std::string, o
 
     squeeze_dimensions(cached_bounds);
 
-    ocp_nlp_dims_initialize(config_.get(), d_["nx"].data(), d_["nu"].data(),
-                            d_["ny"].data(), d_["nbx"].data(),
-                            d_["nbu"].data(), d_["ng"].data(),
-                            d_["nh"].data(), std::vector<int>(N + 1, 0).data(),
-                            d_["ns"].data(), d_["nz"].data(), dims_.get());
+    ocp_nlp_dims_set_opt_vars(config_.get(), dims_.get(), "nx", d_["nx"].data());
+    ocp_nlp_dims_set_opt_vars(config_.get(), dims_.get(), "nu", d_["nu"].data());
+    ocp_nlp_dims_set_opt_vars(config_.get(), dims_.get(), "nz", d_["nx"].data());
+    ocp_nlp_dims_set_opt_vars(config_.get(), dims_.get(), "ns", d_["ns"].data());
+
+    for (int i = 0; i <= N; i++)
+    {
+        ocp_nlp_dims_set_cost(config_.get(), dims_.get(), i, "ny", &d_["ny"].data()[i]);
+
+        ocp_nlp_dims_set_constraints(config_.get(), dims_.get(), i, "nbx", &d_["nbx"].data()[i]);
+        ocp_nlp_dims_set_constraints(config_.get(), dims_.get(), i, "nbu", &d_["nbu"].data()[i]);
+        ocp_nlp_dims_set_constraints(config_.get(), dims_.get(), i, "ng", &d_["ng"].data()[i]);
+        ocp_nlp_dims_set_constraints(config_.get(), dims_.get(), i, "nh", &d_["nh"].data()[i]);
+        ocp_nlp_dims_set_constraints(config_.get(), dims_.get(), i, "nsh", &d_["ns"].data()[i]);
+
+    }
 
     solver_options_.reset(ocp_nlp_opts_create(config_.get(), dims_.get()));
 
@@ -204,7 +222,7 @@ void ocp_nlp::initialize_solver(std::string solver_name, std::map<std::string, o
 
     result_.reset(ocp_nlp_out_create(config_.get(), dims_.get()));
 
-    solver_.reset(ocp_nlp_create(config_.get(), dims_.get(), solver_options_.get()));
+    solver_.reset(ocp_nlp_solver_create(config_.get(), dims_.get(), solver_options_.get()));
 }
 
 ocp_nlp_solution ocp_nlp::solve(vector<double> x_guess, vector<double> u_guess)
@@ -363,7 +381,7 @@ void ocp_nlp::set_stage_cost(int stage, const casadi::Function& residual, vector
     module_["nls_residual"] = generate_nls_residual(residual);
 
     ocp_nlp_cost_nls_model *model = (ocp_nlp_cost_nls_model *) nlp_->cost[stage];
-    model->nls_jac = (external_function_generic *) module_["nls_residual"].as_external_function();
+    model->nls_res_jac = (external_function_generic *) module_["nls_residual"].as_external_function();
     blasfeo_pack_dmat(ny, ny, W.data(), ny, &model->W, 0, 0);
     blasfeo_pack_dvec(ny, y_ref.data(), &model->y_ref, 0);
 }
@@ -431,7 +449,7 @@ void ocp_nlp::set_dynamics(const casadi::Function &model, std::map<std::string, 
     cached_model_ = module_["expl_vde_for"].name();
 
     for (int stage = 0; stage < N; ++stage)
-        nlp_set_model_in_stage(config_.get(), nlp_.get(), stage, "expl_vde_for",
+        ocp_nlp_dynamics_model_set(config_.get(), dims_.get(), nlp_.get(), stage, "expl_vde_for",
                                (void *) module_["expl_vde_for"].as_external_function());
 
 };

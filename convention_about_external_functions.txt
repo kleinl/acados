@@ -10,14 +10,14 @@ This file contains the description of all external functions interfaced to acado
 
 // complete gradient and hessian of cost, computed externally
 
-external function: ext_cost
+external function: ext_cost_jac_hes
 
 inputs:
-0) [u; x]    size: nu+nx    type: COLMAJ
-
+0) [x]    size: nx    type: BLASFEO_DVEC_ARGS
+1) [u]    size: nu    type: BLASFEO_DVEC_ARGS
 outputs:
-0) [grad_u; grad_x]    size: nu+nx    type: COLMAJ
-1) [hess_uu, hess_ux; hess_xu; hess_xx]    size: (nu+nx)*(nu+nx)    type: COLMAJ
+0) [grad_u; grad_x]    size: nu+nx    type: BLASFEO_DVEC
+1) [hess_uu, hess_ux; hess_xu; hess_xx]    size: (nu+nx)*(nu+nx)    type: BLASFEO_DMAT
 
 
 
@@ -27,10 +27,11 @@ outputs:
 
 // function and jacobian_transposed of residuals of nonlinear least-squares
 
-external function: nls_jac
+external function: nls_res_jac
 
 inputs:
-0) [u; x]    size: nu+nx    type: BLASFEO_DVEC
+0) [x]    size: nx    type: BLASFEO_DVEC_ARGS
+1) [u]    size: nu    type: BLASFEO_DVEC_ARGS
 
 outputs:
 0) [fun]    size: ny    type: BLASFEO_DVEC
@@ -43,8 +44,9 @@ outputs:
 external function: nls_hess
 
 inputs:
-0) [u; x]    size: nu+nx    type: BLASFEO_DVEC
-1) [fun]    size: ny    type: BLASFEO_DVEC
+0) [x]    size: nx    type: BLASFEO_DVEC_ARGS
+1) [u]    size: nu    type: BLASFEO_DVEC_ARGS
+2) [fun]  size: ny    type: BLASFEO_DVEC
 
 outputs:
 0) [hess_uu, hess_ux; hess_xu; hess_xx]    size: (nu+nx)*(nu+nx)    type: BLASFEO_DMAT
@@ -57,22 +59,26 @@ outputs:
 
 // function and jacobian_transposed of nonlinear constraints
 
-external function: h
+external function: nl_constr_h_fun_jac
 
 inputs:
-0) [u; x]    size: nu+nx    type: BLASFEO_DVEC
+0) [x]    size: nx    type: BLASFEO_DVEC_ARGS
+1) [u]    size: nu    type: BLASFEO_DVEC_ARGS
 
 outputs:
 0) [fun]    size: nh    type: BLASFEO_DVEC_ARGS
 1) [jac_u'; jac_x']    size: (nu+nx)*nh    type: BLASFEO_DMAT_ARGS
 
 
+// TODO(whoever): add documentation; split input into x, u;
+external function: p
 
 /************************************************
 * sim_erk_integrator
 ************************************************/
 
 // function of explicit ode model
+        - needed if opts->sens_forw == false
 
 external function: expl_ode_fun
 
@@ -86,29 +92,31 @@ outputs:
 
 
 // function and jacobian-times-seeds (forward sensitivities) of explicit ode model, computed using vde model
+        - needed if opts->sens_forw == true
 
 external function: expl_vde_for
 
 inputs:
-0) [x]    size: nx    type: COLMAJ
-1) [Sx]    size: nx*nx    type: COLMAJ
-2) [Su]    size: nx*nu    type: COLMAJ
-3) [u]    size: nu    type: COLMAJ
+0) [x]    size: nx       type: COLMAJ
+1) [Sx]   size: nx*nx    type: COLMAJ
+2) [Su]   size: nx*nu    type: COLMAJ
+3) [u]    size: nu       type: COLMAJ
 
 outputs:
-0) [fun]    size: nx    type: COLMAJ
-1) [jac_x*Sx]    size: nx*nx    type: COLMAJ
+0) [fun]               size: nx       type: COLMAJ
+1) [jac_x*Sx]          size: nx*nx    type: COLMAJ
 2) [jac_x*Su+jac_u]    size: nx*nu    type: COLMAJ
 
 
 
 // jacobian_transposed-times-vector (adjoint sensitivities) of explicit ode model
+        - needed if opts->sens_adj == true
 
 external function: expl_ode_adj
 
-0) [x]    size: nx    type: COLMAJ
+0) [x]      size: nx    type: COLMAJ
 1) [lam]    size: nx    type: COLMAJ
-2) [u]    size: nu    type: COLMAJ
+2) [u]      size: nu    type: COLMAJ
 
 outputs:
 0) [jac_x'*lam; jac_u'*lam]    size: nx+nu    type: COLMAJ
@@ -116,6 +124,7 @@ outputs:
 
 
 // hessian of explicit ode model, computed using vde model
+    - needed if opts->sens_hess == true
 
 external function: expl_vde_hess
 
@@ -132,47 +141,13 @@ outputs:
 
 
 /************************************************
-* sim_lifted_irk_integrator
-************************************************/
-
-// function and jacobian of explicit ode model
-
-external function: expl_ode_jac
-
-inputs:
-0) [x]    size: nx    type: COLMAJ
-1) [u]    size: nu    type: COLMAJ
-
-outputs:
-0) [fun]    size: nx    type: COLMAJ
-1) [jac]    size: nx*ns    type: COLMAJ
-
-
-
-// function and jacobian-times-seeds (forward sensitivities) of explicit ode model, computed using vde model
-
-external function: expl_vde_for
-
-inputs:
-0) [x]    size: nx    type: COLMAJ
-1) [Sx]    size: nx*nx    type: COLMAJ
-2) [Su]    size: nx*nu    type: COLMAJ
-3) [u]    size: nu    type: COLMAJ
-
-outputs:
-0) [fun]    size: nx    type: COLMAJ
-1) [jac_x*Sx]    size: nx*nx    type: COLMAJ
-2) [jac_x*Su+jac_u]    size: nx*nu    type: COLMAJ
-
-
-
-/************************************************
 * sim_irk_integrator
 ************************************************/
 
 // function of implicit ode model
 
 external function: impl_ode_fun
+        -- only needed if opts->jac_reuse == true
 
 inputs:
 0) [x]    size: nx    type: BLASFEO_DVEC
@@ -187,8 +162,8 @@ outputs:
 
 // function and jacobians of implicit ode model
 
-external function: impl_ode_fun_jac_x_xdot
-
+external function: impl_ode_fun_jac_x_xdot_z
+        -- ALWAYS NEEDED!
 inputs:
 0) [x]    size: nx    type: BLASFEO_DVEC
 1) [K]    size: nx    type: BLASFEO_DVEC_ARGS
@@ -199,13 +174,14 @@ outputs:
 0) [fun]        size: nx       type: BLASFEO_DVEC_ARGS
 1) [jac_x]      size: nx*nx    type: BLASFEO_DMAT
 2) [jac_xdot]   size: nx*nx    type: BLASFEO_DMAT
+3) [jac_z]      size: nx*nz    type: BLASFEO_DMAT
 
 
 
 // jacobians of implicit ode model
 
-external function: impl_ode_jac_x_xdot_u
-
+external function: impl_ode_jac_x_xdot_u_z
+        - needed if ( opts->sens_forw || opts->sens_hess || opts->sens_algebraic || opts->sens_adj )
 inputs:
 0) [x]    size: nx    type: BLASFEO_DVEC
 1) [K]    size: nx    type: BLASFEO_DVEC_ARGS
@@ -217,10 +193,11 @@ outputs:
 0) [jac_x]      size: nx*nx    type: BLASFEO_DMAT
 1) [jac_xdot]   size: nx*nx    type: BLASFEO_DMAT
 2) [jac_u]      size: nx*nu    type: BLASFEO_DMAT
+3) [jac_z]      size: nx*nz    type: BLASFEO_DMAT
 
 
 // hessian function of implicit ode model
-
+        - only needed if opts->sens_hess
 external function: impl_ode_hess
 
 inputs:
@@ -235,13 +212,13 @@ outputs:
 0) [f_hess]     size: (nx+nu, nx+nu)        type: BLASFEO_DMAT
 
 /************************************************
-* sim_new_lifted_irk_integrator
+* sim_lifted_irk_integrator
 ************************************************/
 
 // function of implicit ode model
 
 external function: impl_ode_fun
-
+        - needed   if (!update_sens)
 inputs:
 0) [x]    size: nx    type: BLASFEO_DVEC
 1) [K]    size: nx    type: BLASFEO_DVEC_ARGS
@@ -255,6 +232,7 @@ outputs:
 // function of implicit ode model + jacobians of implicit ode model
 
 external function: impl_ode_fun_jac_x_xdot_u
+        - needed   if (update_sens)
 
 inputs:
 0) [x]    size: nx    type: BLASFEO_DVEC
